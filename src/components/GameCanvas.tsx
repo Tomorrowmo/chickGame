@@ -1,9 +1,10 @@
 import { useCallback } from 'react'
-import { Application, extend } from '@pixi/react'
+import { Application, extend, useTick } from '@pixi/react'
 import { Container, Graphics, Text } from 'pixi.js'
 import { Background } from './Background'
 import { Chick } from './Chick'
 import { useGameStore } from '../store/gameStore'
+import { updateChickAI } from '../systems/chickAI'
 import type { ChickData } from '../types/chick'
 
 extend({ Container, Graphics, Text })
@@ -26,6 +27,29 @@ function randomGrassY(height: number): number {
   return grassTop + Math.random() * (grassBottom - grassTop)
 }
 
+/** Inner component that drives the game loop via useTick (must be inside <Application>) */
+function GameLoop() {
+  const chicks = useGameStore((s) => s.chicks)
+  const tick = useGameStore((s) => s.tick)
+  const updateChick = useGameStore((s) => s.updateChick)
+
+  useTick((ticker) => {
+    const delta = ticker.deltaTime
+    // Update hunger / mood / growth
+    tick(delta)
+
+    // Run AI for each chick
+    for (const chick of chicks) {
+      const updates = updateChickAI(chick, delta)
+      if (Object.keys(updates).length > 0) {
+        updateChick(chick.id, updates)
+      }
+    }
+  })
+
+  return null
+}
+
 export function GameCanvas({ width, height }: GameCanvasProps) {
   const chicks = useGameStore((s) => s.chicks)
   const addEgg = useGameStore((s) => s.addEgg)
@@ -46,6 +70,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
     <div style={{ position: 'relative', width, height }}>
       <Application width={width} height={height} background="#87CEEB">
         <pixiContainer>
+          <GameLoop />
           <Background width={width} height={height} />
           {chicks.map((chick) => (
             <Chick key={chick.id} data={chick} onClick={handleChickClick} />
