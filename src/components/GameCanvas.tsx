@@ -1,7 +1,9 @@
+import { useCallback } from 'react'
 import { Application, extend } from '@pixi/react'
 import { Container, Graphics, Text } from 'pixi.js'
 import { Background } from './Background'
 import { Chick } from './Chick'
+import { useGameStore } from '../store/gameStore'
 import type { ChickData } from '../types/chick'
 
 extend({ Container, Graphics, Text })
@@ -11,72 +13,64 @@ interface GameCanvasProps {
   height: number
 }
 
-const TEST_CHICKS: ChickData[] = [
-  {
-    id: 'test-1',
-    name: 'Sunny',
-    breed: 'leghorn',
-    rarity: 'common',
-    stage: 'egg',
-    mood: 'normal',
-    moodValue: 60,
-    hunger: 30,
-    x: 200,
-    y: 450,
-    targetX: 200,
-    targetY: 450,
-    direction: 'right',
-    currentAction: 'idle',
-    growthProgress: 20,
-    birthTime: Date.now(),
-  },
-  {
-    id: 'test-2',
-    name: 'Peep',
-    breed: 'silkie',
-    rarity: 'special',
-    stage: 'baby',
-    mood: 'happy',
-    moodValue: 90,
-    hunger: 50,
-    x: 400,
-    y: 480,
-    targetX: 400,
-    targetY: 480,
-    direction: 'right',
-    currentAction: 'idle',
-    growthProgress: 45,
-    birthTime: Date.now() - 60000,
-  },
-  {
-    id: 'test-3',
-    name: 'Clucky',
-    breed: 'plymouth',
-    rarity: 'rare',
-    stage: 'adult',
-    mood: 'bored',
-    moodValue: 30,
-    hunger: 70,
-    x: 600,
-    y: 500,
-    targetX: 600,
-    targetY: 500,
-    direction: 'left',
-    currentAction: 'idle',
-    growthProgress: 100,
-    birthTime: Date.now() - 300000,
-  },
-]
+/** Returns a random x position within the grass area */
+function randomGrassX(width: number): number {
+  const margin = 60
+  return margin + Math.random() * (width - margin * 2)
+}
+
+/** Returns a random y position within the grass area (lower portion of screen) */
+function randomGrassY(height: number): number {
+  const grassTop = height * 0.55
+  const grassBottom = height - 40
+  return grassTop + Math.random() * (grassBottom - grassTop)
+}
 
 export function GameCanvas({ width, height }: GameCanvasProps) {
+  const chicks = useGameStore((s) => s.chicks)
+  const addEgg = useGameStore((s) => s.addEgg)
+  const selectChick = useGameStore((s) => s.selectChick)
+
+  const handleAddEgg = useCallback(() => {
+    addEgg(randomGrassX(width), randomGrassY(height))
+  }, [addEgg, width, height])
+
+  const handleChickClick = useCallback(
+    (data: ChickData) => {
+      selectChick(data.id)
+    },
+    [selectChick],
+  )
+
   return (
-    <Application width={width} height={height} background="#87CEEB">
-      <pixiContainer>
-        <Background width={width} height={height} />
-        {TEST_CHICKS.map((chick) => (
-          <Chick key={chick.id} data={chick} />
-        ))}
-      </pixiContainer>
-    </Application>
+    <div style={{ position: 'relative', width, height }}>
+      <Application width={width} height={height} background="#87CEEB">
+        <pixiContainer>
+          <Background width={width} height={height} />
+          {chicks.map((chick) => (
+            <Chick key={chick.id} data={chick} onClick={handleChickClick} />
+          ))}
+        </pixiContainer>
+      </Application>
+      <button
+        onClick={handleAddEgg}
+        style={{
+          position: 'absolute',
+          bottom: 16,
+          right: 16,
+          padding: '8px 16px',
+          fontSize: 16,
+          borderRadius: 8,
+          border: 'none',
+          background: '#f5c542',
+          color: '#333',
+          cursor: 'pointer',
+          fontWeight: 'bold',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+        }}
+      >
+        Add Egg
+      </button>
+    </div>
   )
 }
