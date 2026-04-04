@@ -33,6 +33,8 @@ export const FOOD_COLORS: Record<FoodType, number> = {
 
 let nextFoodId = 0
 
+export type MiniGameType = 'hideAndSeek' | 'race' | 'fetch'
+
 interface GameState {
   chicks: ChickData[]
   coins: number
@@ -40,6 +42,7 @@ interface GameState {
   selectedFood: FoodType | null
   feedingMode: boolean
   foodParticles: FoodParticle[]
+  currentGame: MiniGameType | null
 
   // Actions
   addEgg: (x: number, y: number) => void
@@ -54,6 +57,10 @@ interface GameState {
   scatterFood: (foodType: FoodType, x: number, y: number) => boolean
   removeFoodParticle: (id: string) => void
   shrinkFoodParticle: (id: string, amount: number) => void
+  startGame: (game: MiniGameType) => void
+  endGame: () => void
+  addCoins: (amount: number) => void
+  boostAllChickMood: (amount: number) => void
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -63,6 +70,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectedFood: null,
   feedingMode: false,
   foodParticles: [],
+  currentGame: null,
 
   addEgg: (x, y) =>
     set((state) => ({
@@ -190,6 +198,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((state) => ({
       foodParticles: state.foodParticles.map((f) =>
         f.id === id ? { ...f, scale: Math.max(0, f.scale - amount) } : f,
+      ),
+    })),
+
+  startGame: (game) =>
+    set({ currentGame: game, feedingMode: false, selectedFood: null }),
+
+  endGame: () => set({ currentGame: null }),
+
+  addCoins: (amount) =>
+    set((state) => ({ coins: state.coins + amount })),
+
+  boostAllChickMood: (amount) =>
+    set((state) => ({
+      chicks: state.chicks.map((c) =>
+        c.stage !== 'egg' && c.stage !== 'hatching'
+          ? { ...c, moodValue: Math.min(100, c.moodValue + amount) }
+          : c,
       ),
     })),
 }))

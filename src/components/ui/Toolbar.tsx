@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { useGameStore, FOOD_COSTS } from '../../store/gameStore'
 import type { FoodType } from '../../store/gameStore'
 
@@ -35,19 +35,31 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
   const selectedFood = useGameStore((s) => s.selectedFood)
   const feedingMode = useGameStore((s) => s.feedingMode)
   const coins = useGameStore((s) => s.coins)
+  const chicks = useGameStore((s) => s.chicks)
+  const currentGame = useGameStore((s) => s.currentGame)
   const setSelectedFood = useGameStore((s) => s.setSelectedFood)
   const setFeedingMode = useGameStore((s) => s.setFeedingMode)
+  const startGame = useGameStore((s) => s.startGame)
 
-  // Escape key exits feeding mode
+  const [showGameMenu, setShowGameMenu] = useState(false)
+
+  // Count non-egg chicks
+  const playableChicks = chicks.filter(
+    (c) => c.stage !== 'egg' && c.stage !== 'hatching',
+  ).length
+  const canPlay = playableChicks >= 3 && !currentGame
+
+  // Escape key exits feeding mode and closes game menu
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && feedingMode) {
-        setFeedingMode(false)
+      if (e.key === 'Escape') {
+        if (feedingMode) setFeedingMode(false)
+        if (showGameMenu) setShowGameMenu(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [feedingMode, setFeedingMode])
+  }, [feedingMode, setFeedingMode, showGameMenu])
 
   const handleFoodClick = useCallback(
     (type: FoodType) => {
@@ -59,6 +71,9 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
     },
     [selectedFood, setSelectedFood],
   )
+
+  // Hide toolbar when a mini-game is active
+  if (currentGame) return null
 
   return (
     <div
@@ -163,20 +178,63 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
         <span style={{ fontSize: 11 }}>Clean</span>
       </button>
 
-      {/* Play button (placeholder) */}
-      <button
-        onClick={() => {}}
-        disabled
-        style={{
-          ...btnBase,
-          background: '#e8e8e8',
-          color: '#bdbdbd',
-          cursor: 'not-allowed',
-        }}
-      >
-        <span style={{ fontSize: 22 }}>🎮</span>
-        <span style={{ fontSize: 11 }}>Play</span>
-      </button>
+      {/* Play button */}
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => canPlay && setShowGameMenu((v) => !v)}
+          disabled={!canPlay}
+          style={{
+            ...btnBase,
+            background: canPlay ? '#fff8e1' : '#e8e8e8',
+            color: canPlay ? '#5d4037' : '#bdbdbd',
+            cursor: canPlay ? 'pointer' : 'not-allowed',
+          }}
+          title={
+            !canPlay && playableChicks < 3
+              ? 'Need at least 3 hatched chicks to play'
+              : undefined
+          }
+        >
+          <span style={{ fontSize: 22 }}>🎮</span>
+          <span style={{ fontSize: 11 }}>Play</span>
+        </button>
+        {showGameMenu && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginBottom: 6,
+              background: '#fff8e1',
+              border: '2px solid rgba(245, 197, 66, 0.5)',
+              borderRadius: 12,
+              padding: 6,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+              whiteSpace: 'nowrap',
+              zIndex: 30,
+              fontFamily,
+            }}
+          >
+            <button
+              onClick={() => {
+                startGame('hideAndSeek')
+                setShowGameMenu(false)
+              }}
+              style={{
+                ...btnBase,
+                background: '#ffe082',
+                width: '100%',
+                minWidth: 120,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>🐣</span>
+              <span style={{ fontSize: 12 }}>Hide & Seek</span>
+            </button>
+            {/* Future games go here */}
+          </div>
+        )}
+      </div>
 
       {/* Feeding mode hint */}
       {feedingMode && (

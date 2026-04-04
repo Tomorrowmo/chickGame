@@ -11,6 +11,8 @@ import { Chick } from './Chick'
 import { ClickEffects } from './ClickEffects'
 import { HatchEffect } from './HatchEffect'
 import { FoodParticles } from './FoodParticles'
+import { HideAndSeekGame, HideAndSeekPixi } from '../games/HideAndSeek'
+import { GameOverlay } from '../games/GameOverlay'
 import { useGameStore } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
 import { updateChickAI } from '../systems/chickAI'
@@ -48,9 +50,14 @@ function GameLoop() {
   const chicks = useGameStore((s) => s.chicks)
   const tick = useGameStore((s) => s.tick)
   const updateChick = useGameStore((s) => s.updateChick)
+  const currentGame = useGameStore((s) => s.currentGame)
 
   useTick((ticker) => {
     const delta = ticker.deltaTime
+
+    // When a mini-game is active, pause normal AI and stat ticking
+    if (currentGame) return
+
     // Update hunger / mood / growth
     tick(delta)
 
@@ -152,8 +159,12 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   const feedingMode = useGameStore((s) => s.feedingMode)
   const selectedFood = useGameStore((s) => s.selectedFood)
   const scatterFood = useGameStore((s) => s.scatterFood)
+  const currentGame = useGameStore((s) => s.currentGame)
   const addEffect = useClickEffectsStore((s) => s.addEffect)
   const setCursor = useClickEffectsStore((s) => s.setCursor)
+
+  // Hide-and-seek game state (hook is always called, but only active when currentGame === 'hideAndSeek')
+  const hideAndSeek = HideAndSeekGame()
 
   const [hatchEffects, setHatchEffects] = useState<ActiveHatchEffect[]>([])
 
@@ -269,8 +280,27 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
               onComplete={() => removeHatchEffect(effect.id)}
             />
           ))}
+          {currentGame === 'hideAndSeek' && (
+            <HideAndSeekPixi
+              hiddenChicks={hideAndSeek.hiddenChicks}
+              onClickChick={hideAndSeek.handleClickChick}
+            />
+          )}
         </pixiContainer>
       </Application>
+      {currentGame === 'hideAndSeek' && (
+        <GameOverlay
+          title="Hide & Seek"
+          phase={hideAndSeek.phase}
+          timeLeft={hideAndSeek.timeLeft}
+          score={hideAndSeek.score}
+          maxScore={hideAndSeek.totalChicks}
+          instructions="Find the hidden chicks peeking out from behind bushes!"
+          onStart={hideAndSeek.handleStart}
+          onPlayAgain={hideAndSeek.handlePlayAgain}
+          onExit={hideAndSeek.handleExit}
+        />
+      )}
     </div>
   )
 }
