@@ -2,9 +2,10 @@ import type { ChickData } from '../types/chick'
 import type { PlacedDecoration } from '../store/gameStore'
 import type { AchievementStats } from '../store/achievementData'
 import { DEFAULT_ACHIEVEMENT_STATS } from '../store/achievementData'
+import { generatePersonality } from '../store/chickFactory'
 
 const SAVE_KEY = 'linda-game-save'
-const SAVE_VERSION = 6
+const SAVE_VERSION = 7
 const AUTO_SAVE_INTERVAL = 30_000 // 30 seconds
 
 interface SaveData {
@@ -109,6 +110,15 @@ export function loadGame(): PersistentState | null {
         coopType: (c as Record<string, unknown>).coopType ?? (c.stage !== 'egg' && c.stage !== 'hatching' ? c.rarity : null),
       }))
       data.version = 6
+    }
+
+    // Migrate from v6: add personality to chicks
+    if (data.version < 7) {
+      data.chicks = data.chicks.map((c: ChickData) => ({
+        ...c,
+        personality: (c as Record<string, unknown>).personality ?? generatePersonality(),
+      }))
+      data.version = 7
     }
 
     return {

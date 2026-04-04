@@ -37,6 +37,110 @@ function distBetween(a: { x: number; y: number }, b: { x: number; y: number }): 
   return Math.sqrt(dx * dx + dy * dy)
 }
 
+function clampX(v: number): number {
+  return Math.max(WORLD_X_MIN, Math.min(WORLD_X_MAX, v))
+}
+
+function clampY(v: number): number {
+  return Math.max(GROUND_Y_MIN, Math.min(GROUND_Y_MAX, v))
+}
+
+/** Pick a walking target based on personality blend */
+function pickWalkingTarget(
+  chick: ChickData,
+  otherChicks: ChickData[],
+): { x: number; y: number } {
+  const p = chick.personality
+  const roll = Math.random()
+
+  if (roll < 0.4) {
+    // 40%: next route waypoint
+    if (p.route.length > 0) {
+      const wp = p.route[p.routeIndex % p.route.length]
+      return { x: wp.x, y: wp.y }
+    }
+  } else if (roll < 0.7) {
+    // 30%: random position within wanderRadius of home
+    const angle = Math.random() * Math.PI * 2
+    const dist = Math.random() * p.wanderRadius
+    return {
+      x: clampX(p.homeX + Math.cos(angle) * dist),
+      y: clampY(p.homeY + Math.sin(angle) * dist * 0.5),
+    }
+  } else if (roll < 0.9) {
+    // 20%: fully random
+    return {
+      x: WORLD_X_MIN + Math.random() * (WORLD_X_MAX - WORLD_X_MIN),
+      y: GROUND_Y_MIN + Math.random() * (GROUND_Y_MAX - GROUND_Y_MIN),
+    }
+  } else {
+    // 10%: toward nearest chick
+    if (otherChicks.length > 0) {
+      let nearest = otherChicks[0]
+      let nearDist = distBetween(chick, nearest)
+      for (const other of otherChicks) {
+        const d = distBetween(chick, other)
+        if (d < nearDist) {
+          nearest = other
+          nearDist = d
+        }
+      }
+      // Walk toward but offset slightly
+      return {
+        x: clampX(nearest.x + (Math.random() - 0.5) * 40),
+        y: clampY(nearest.y + (Math.random() - 0.5) * 30),
+      }
+    }
+  }
+
+  // Fallback: random near home
+  return {
+    x: clampX(p.homeX + (Math.random() - 0.5) * p.wanderRadius),
+    y: clampY(p.homeY + (Math.random() - 0.5) * p.wanderRadius * 0.5),
+  }
+}
+
+/** Get action weights based on personality and mood */
+function getActionWeights(
+  chick: ChickData,
+): [number, number, number, number] {
+  // [idle, walking, eating, sleeping]
+  const pType = chick.personality.type
+
+  // Base weights by personality
+  let weights: [number, number, number, number]
+  switch (pType) {
+    case 'explorer':
+      weights = [0.1, 0.55, 0.2, 0.15]
+      break
+    case 'homebody':
+      weights = [0.35, 0.2, 0.25, 0.2]
+      break
+    case 'social':
+      weights = [0.2, 0.4, 0.2, 0.2]
+      break
+    case 'playful':
+      weights = [0.1, 0.4, 0.3, 0.2]
+      break
+    case 'lazy':
+      weights = [0.35, 0.1, 0.15, 0.4]
+      break
+    default:
+      weights = [0.3, 0.3, 0.2, 0.2]
+  }
+
+  // Mood adjustments
+  if (chick.mood === 'happy') {
+    weights[1] += 0.1 // more walking
+    weights[0] -= 0.1
+  } else if (chick.mood === 'angry') {
+    weights[0] += 0.15
+    weights[1] -= 0.15
+  }
+
+  return weights
+}
+
 export function updateChickAI(
   chick: ChickData,
   delta: number,
@@ -51,14 +155,18 @@ export function updateChickAI(
   const updates: Partial<ChickData> = {}
   const night = isNight(gameTime)
   const dawn = isDawn(gameTime)
+  const p = chick.personality
+  const speedMult = p.speedMult
 
   // === Pond splash attraction ===
   const splashActive = pondSplashTime != null && (Date.now() - pondSplashTime) < SPLASH_ATTRACT_DURATION
   if (splashActive && !night) {
     const distToPond = distBetween(chick, { x: POND_X, y: POND_Y })
-    if (distToPond < SPLASH_ATTRACT_RADIUS && distToPond > 50) {
-      // High chance to run toward the pond
-      if (Math.random() < 0.03 * delta) {
+    // Playful chicks are more attracted to splashes
+    const attractRadius = p.type === 'playful' ? SPLASH_ATTRACT_RADIUS * 1.5 : SPLASH_ATTRACT_RADIUS
+    if (distToPond < attractRadius && distToPond > 50) {
+      const attractChance = p.type === 'playful' ? 0.05 : p.type === 'lazy' ? 0.01 : 0.03
+      if (Math.random() < attractChance * delta) {
         const angle = Math.atan2(chick.y - POND_Y, chick.x - POND_X)
         const edgeX = POND_X + Math.cos(angle) * 50
         const edgeY = POND_Y + Math.sin(angle) * 25
@@ -81,7 +189,6 @@ export function updateChickAI(
   // === Night behavior: walk to the correct coop based on rarity and sleep ===
   if (night) {
     const targetCoop = getCoopForChick(chick)
-    // Each chick gets a unique offset around the coop based on its id hash
     const idHash = chick.id.charCodeAt(0) + chick.id.charCodeAt(chick.id.length - 1)
     const angle = (idHash % 12) * (Math.PI * 2 / 12)
     const offsetDist = 20 + (idHash % 40)
@@ -92,7 +199,7 @@ export function updateChickAI(
       const dx = sleepX - chick.x
       const dy = sleepY - chick.y
       const dist = distToSleep
-      const speed = 0.6 * delta
+      const speed = 0.6 * delta * speedMult
       updates.x = chick.x + (dx / dist) * speed
       updates.y = chick.y + (dy / dist) * speed
       updates.direction = dx > 0 ? 'right' : 'left'
@@ -106,8 +213,16 @@ export function updateChickAI(
   // === Dawn: wake up and scatter ===
   if (dawn && chick.currentAction === 'sleeping') {
     updates.currentAction = 'walking'
-    updates.targetX = WORLD_X_MIN + Math.random() * (WORLD_X_MAX - WORLD_X_MIN)
-    updates.targetY = GROUND_Y_MIN + Math.random() * (GROUND_Y_MAX - GROUND_Y_MIN)
+    // Go to first route waypoint on waking
+    if (p.route.length > 0) {
+      const wp = p.route[0]
+      updates.targetX = wp.x
+      updates.targetY = wp.y
+      updates.personality = { ...p, routeIndex: 1 % p.route.length }
+    } else {
+      updates.targetX = WORLD_X_MIN + Math.random() * (WORLD_X_MAX - WORLD_X_MIN)
+      updates.targetY = GROUND_Y_MIN + Math.random() * (GROUND_Y_MAX - GROUND_Y_MIN)
+    }
     return updates
   }
 
@@ -119,17 +234,15 @@ export function updateChickAI(
 
   // --- A. Chasing other chicks ---
   if (chick.currentAction === 'chasing') {
-    // Continue chasing toward target
     const dx = chick.targetX - chick.x
     const dy = chick.targetY - chick.y
     const dist = Math.sqrt(dx * dx + dy * dy)
     if (dist > 15) {
-      const speed = 1.4 * delta
+      const speed = 1.4 * delta * speedMult
       updates.x = chick.x + (dx / dist) * speed
       updates.y = chick.y + (dy / dist) * speed
       updates.direction = dx > 0 ? 'right' : 'left'
     } else {
-      // Caught up, go idle
       updates.currentAction = 'idle'
     }
     return updates
@@ -137,7 +250,6 @@ export function updateChickAI(
 
   // --- Angry chick: sometimes face away from others, stay idle ---
   if (chick.mood === 'angry' && Math.random() < 0.01 * delta) {
-    // Turn away from nearest chick (look grumpy)
     if (otherChicks.length > 0) {
       let nearest = otherChicks[0]
       let nearDist = distBetween(chick, nearest)
@@ -148,7 +260,6 @@ export function updateChickAI(
           nearDist = d
         }
       }
-      // Face AWAY from the nearest chick
       const dx = nearest.x - chick.x
       updates.direction = dx > 0 ? 'left' : 'right'
       updates.currentAction = 'idle'
@@ -156,28 +267,32 @@ export function updateChickAI(
     }
   }
 
-  // Random action change
-  if (Math.random() < 0.005 * delta) {
-    // --- B. Group behavior: follow a nearby walking chick ---
-    if (chick.currentAction === 'idle' && Math.random() < 0.3) {
-      const walkingNearby = otherChicks.filter(
-        (c) => c.currentAction === 'walking' && distBetween(chick, c) < 120,
-      )
-      if (walkingNearby.length > 0) {
-        const leader = walkingNearby[Math.floor(Math.random() * walkingNearby.length)]
-        // Walk in similar direction as leader, with slight offset
-        updates.currentAction = 'walking'
-        updates.targetX = leader.targetX + (Math.random() - 0.5) * 40
-        updates.targetY = leader.targetY + (Math.random() - 0.5) * 30
-        // Clamp to bounds
-        updates.targetX = Math.max(WORLD_X_MIN, Math.min(WORLD_X_MAX, updates.targetX))
-        updates.targetY = Math.max(GROUND_Y_MIN, Math.min(GROUND_Y_MAX, updates.targetY))
-        return updates
+  // Random action change — frequency scaled by personality activityLevel
+  const actionChangeChance = 0.005 * p.activityLevel
+  if (Math.random() < actionChangeChance * delta) {
+
+    // --- Social personality: follow nearby walking chicks more aggressively ---
+    if (chick.currentAction === 'idle') {
+      const followChance = p.type === 'social' ? 0.55 : 0.3
+      if (Math.random() < followChance) {
+        const followRadius = p.type === 'social' ? 200 : 120
+        const walkingNearby = otherChicks.filter(
+          (c) => c.currentAction === 'walking' && distBetween(chick, c) < followRadius,
+        )
+        if (walkingNearby.length > 0) {
+          const leader = walkingNearby[Math.floor(Math.random() * walkingNearby.length)]
+          updates.currentAction = 'walking'
+          updates.targetX = clampX(leader.targetX + (Math.random() - 0.5) * 40)
+          updates.targetY = clampY(leader.targetY + (Math.random() - 0.5) * 30)
+          return updates
+        }
       }
     }
 
-    // --- A. Start chasing a nearby chick (happy chicks more likely) ---
-    const chaseChance = chick.mood === 'happy' ? 0.15 : 0.05
+    // --- Start chasing a nearby chick ---
+    let chaseChance = chick.mood === 'happy' ? 0.15 : 0.05
+    if (p.type === 'playful') chaseChance *= 2
+    if (p.type === 'lazy') chaseChance *= 0.3
     if (Math.random() < chaseChance && otherChicks.length > 0) {
       const nearby = otherChicks.filter((c) => distBetween(chick, c) < 150)
       if (nearby.length > 0) {
@@ -190,11 +305,12 @@ export function updateChickAI(
       }
     }
 
-    // --- C. Water play: go toward pond if nearby ---
+    // --- Water play: go toward pond if nearby ---
     const distToPond = distBetween(chick, { x: POND_X, y: POND_Y })
-    const waterPlayChance = chick.mood === 'happy' ? 0.2 : 0.08
+    let waterPlayChance = chick.mood === 'happy' ? 0.2 : 0.08
+    if (p.type === 'playful') waterPlayChance *= 2
+    if (p.type === 'lazy') waterPlayChance *= 0.3
     if (distToPond < POND_PLAY_RADIUS && Math.random() < waterPlayChance) {
-      // Walk to pond edge and "play" (eating action = bobbing)
       const angle = Math.random() * Math.PI * 2
       const edgeX = POND_X + Math.cos(angle) * 50
       const edgeY = POND_Y + Math.sin(angle) * 25
@@ -203,20 +319,14 @@ export function updateChickAI(
       updates.targetY = Math.max(GROUND_Y_MIN, edgeY)
       return updates
     }
-    // If near pond edge and idle, start playing/eating (drinking)
     if (distToPond < 60 && chick.currentAction === 'idle' && Math.random() < 0.3) {
       updates.currentAction = 'eating' // bobbing = drinking
       return updates
     }
 
-    // --- Default random action ---
+    // --- Default random action based on personality weights ---
     const actions = ['idle', 'walking', 'eating', 'sleeping'] as const
-    const weights =
-      chick.mood === 'happy'
-        ? [0.15, 0.45, 0.25, 0.15]
-        : chick.mood === 'angry'
-          ? [0.5, 0.1, 0.1, 0.3]
-          : [0.3, 0.3, 0.2, 0.2]
+    const weights = getActionWeights(chick)
 
     let roll = Math.random()
     for (let i = 0; i < actions.length; i++) {
@@ -227,32 +337,15 @@ export function updateChickAI(
       }
     }
 
-    // Pick new target when starting to walk — prefer positions away from clusters
+    // Pick new target when starting to walk — use personality-based selection
     if (updates.currentAction === 'walking') {
-      let bestX = WORLD_X_MIN + Math.random() * (WORLD_X_MAX - WORLD_X_MIN)
-      let bestY = GROUND_Y_MIN + Math.random() * (GROUND_Y_MAX - GROUND_Y_MIN)
-      let bestMinDist = 0
-      // Try a few random candidates and pick the one farthest from nearest chick
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const cx = WORLD_X_MIN + Math.random() * (WORLD_X_MAX - WORLD_X_MIN)
-        const cy = GROUND_Y_MIN + Math.random() * (GROUND_Y_MAX - GROUND_Y_MIN)
-        let minDist = Infinity
-        for (const other of otherChicks) {
-          const d = Math.sqrt((cx - other.x) ** 2 + (cy - other.y) ** 2)
-          if (d < minDist) minDist = d
-        }
-        if (minDist > bestMinDist) {
-          bestMinDist = minDist
-          bestX = cx
-          bestY = cy
-        }
-      }
-      updates.targetX = bestX
-      updates.targetY = bestY
+      const target = pickWalkingTarget(chick, otherChicks)
+      updates.targetX = target.x
+      updates.targetY = target.y
     }
   }
 
-  // Movement first
+  // Movement
   const action = updates.currentAction ?? chick.currentAction
   if (action === 'walking') {
     const dx = chick.targetX - chick.x
@@ -260,12 +353,17 @@ export function updateChickAI(
     const dist = Math.sqrt(dx * dx + dy * dy)
 
     if (dist > 2) {
-      const speed = 0.8 * delta
+      const speed = 0.8 * delta * speedMult
       updates.x = chick.x + (dx / dist) * speed
       updates.y = chick.y + (dy / dist) * speed
       updates.direction = dx > 0 ? 'right' : 'left'
     } else {
+      // Reached destination — advance route waypoint
       updates.currentAction = 'idle'
+      if (p.route.length > 0) {
+        const nextIdx = (p.routeIndex + 1) % p.route.length
+        updates.personality = { ...p, routeIndex: nextIdx }
+      }
     }
   }
 
