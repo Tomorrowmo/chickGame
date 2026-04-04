@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { ChickData } from '../types/chick'
 import { createEgg, createSpecialEgg, createRareEgg, createMysteryEgg } from './chickFactory'
 import { loadGame, saveGame as persistSave, startAutoSave } from '../systems/persistence'
+import { advanceTime } from '../systems/timeSystem'
 import type { DecorationType } from './shopData'
 
 export type FoodType = 'grain' | 'worm' | 'treat' | 'rainbow_grain' | 'cake'
@@ -71,6 +72,7 @@ export interface EggLayEvent {
 interface GameState {
   chicks: ChickData[]
   coins: number
+  gameTime: number // 0-1440, minutes in a day
   selectedChickId: string | null
   selectedFood: FoodType | null
   feedingMode: boolean
@@ -113,6 +115,7 @@ const savedState = loadGame()
 export const useGameStore = create<GameState>((set, get) => ({
   chicks: savedState?.chicks ?? [],
   coins: savedState?.coins ?? 100,
+  gameTime: savedState?.gameTime ?? 480, // default 8:00 AM
   selectedChickId: savedState?.selectedChickId ?? null,
   selectedFood: null,
   feedingMode: false,
@@ -178,6 +181,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   tick: (delta) => {
     const state = get()
+    const newGameTime = advanceTime(state.gameTime, delta)
     const newEggLayEvents: EggLayEvent[] = []
     let coinGain = 0
 
@@ -229,7 +233,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { ...chick, hunger, moodValue, growthProgress, stage, mood, eggTimer, eggsLaid }
     })
 
-    const updates: Partial<GameState> = { chicks: updated }
+    const updates: Partial<GameState> = { chicks: updated, gameTime: newGameTime }
     if (coinGain > 0) {
       updates.coins = state.coins + coinGain
     }
@@ -302,8 +306,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   clearEggLayEvents: () => set({ eggLayEvents: [] }),
 
   saveGame: () => {
-    const { chicks, coins, selectedChickId, decorations } = get()
-    persistSave({ chicks, coins, selectedChickId, decorations })
+    const { chicks, coins, selectedChickId, decorations, gameTime } = get()
+    persistSave({ chicks, coins, selectedChickId, decorations, gameTime })
     set({ showSaveIndicator: true })
     setTimeout(() => useGameStore.setState({ showSaveIndicator: false }), 1500)
   },
@@ -385,8 +389,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 // Start auto-save
 startAutoSave(
   () => {
-    const { chicks, coins, selectedChickId, decorations } = useGameStore.getState()
-    return { chicks, coins, selectedChickId, decorations }
+    const { chicks, coins, selectedChickId, decorations, gameTime } = useGameStore.getState()
+    return { chicks, coins, selectedChickId, decorations, gameTime }
   },
   () => {
     useGameStore.setState({ showSaveIndicator: true })
@@ -397,7 +401,7 @@ startAutoSave(
 // Save on page unload
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
-    const { chicks, coins, selectedChickId, decorations } = useGameStore.getState()
-    persistSave({ chicks, coins, selectedChickId, decorations })
+    const { chicks, coins, selectedChickId, decorations, gameTime } = useGameStore.getState()
+    persistSave({ chicks, coins, selectedChickId, decorations, gameTime })
   })
 }

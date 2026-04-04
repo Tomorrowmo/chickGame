@@ -2,7 +2,7 @@ import type { ChickData } from '../types/chick'
 import type { PlacedDecoration } from '../store/gameStore'
 
 const SAVE_KEY = 'linda-game-save'
-const SAVE_VERSION = 3
+const SAVE_VERSION = 4
 const AUTO_SAVE_INTERVAL = 30_000 // 30 seconds
 
 interface SaveData {
@@ -11,6 +11,7 @@ interface SaveData {
   coins: number
   selectedChickId: string | null
   decorations: PlacedDecoration[]
+  gameTime: number
   savedAt: number
 }
 
@@ -19,6 +20,7 @@ export interface PersistentState {
   coins: number
   selectedChickId: string | null
   decorations: PlacedDecoration[]
+  gameTime: number
 }
 
 export function saveGame(state: PersistentState): void {
@@ -29,6 +31,7 @@ export function saveGame(state: PersistentState): void {
       coins: state.coins,
       selectedChickId: state.selectedChickId,
       decorations: state.decorations,
+      gameTime: state.gameTime,
       savedAt: Date.now(),
     }
     localStorage.setItem(SAVE_KEY, JSON.stringify(data))
@@ -73,11 +76,18 @@ export function loadGame(): PersistentState | null {
       data.version = 3
     }
 
+    // Migrate from v3: add gameTime
+    if (data.version < 4) {
+      data.gameTime = data.gameTime ?? 480 // default to 8:00 AM
+      data.version = 4
+    }
+
     return {
       chicks: data.chicks,
       coins: data.coins,
       selectedChickId: data.selectedChickId ?? null,
       decorations: data.decorations ?? [],
+      gameTime: data.gameTime ?? 480,
     }
   } catch {
     console.warn('[persistence] Corrupted save data, clearing')

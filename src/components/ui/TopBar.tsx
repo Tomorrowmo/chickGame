@@ -1,14 +1,20 @@
 import { useState, useCallback } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { isMuted, toggleMute } from '../../systems/audio'
+import { formatGameTime, getTimePhase } from '../../systems/timeSystem'
 
 const fontFamily = '"Comic Sans MS", "Chalkboard SE", cursive'
 
 export function TopBar() {
   const coins = useGameStore((s) => s.coins)
   const chicks = useGameStore((s) => s.chicks)
+  const gameTime = useGameStore((s) => s.gameTime)
   const showSaveIndicator = useGameStore((s) => s.showSaveIndicator)
   const [muted, setMuted] = useState(isMuted)
+
+  const phase = getTimePhase(gameTime)
+  const timeStr = formatGameTime(gameTime)
+  const timeIcon = (phase === 'night' || phase === 'sunset') ? '\u{1F319}' : '\u{2600}\u{FE0F}'
 
   const handleToggleMute = useCallback(() => {
     toggleMute()
@@ -66,6 +72,10 @@ export function TopBar() {
           <span style={{ fontWeight: 'bold' }}>{eggCount}</span>
         </span>
       )}
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 20 }}>{timeIcon}</span>
+        <span style={{ fontWeight: 'bold' }}>{timeStr}</span>
+      </span>
       <span
         role="button"
         onClick={handleToggleMute}
