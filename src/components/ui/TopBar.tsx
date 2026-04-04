@@ -7,6 +7,7 @@ const fontFamily = '"Comic Sans MS", "Chalkboard SE", cursive'
 export function TopBar() {
   const coins = useGameStore((s) => s.coins)
   const chicks = useGameStore((s) => s.chicks)
+  const showSaveIndicator = useGameStore((s) => s.showSaveIndicator)
   const [muted, setMuted] = useState(isMuted)
 
   const handleToggleMute = useCallback(() => {
@@ -72,6 +73,18 @@ export function TopBar() {
       >
         {muted ? '🔇' : '🔊'}
       </span>
+      {showSaveIndicator && (
+        <span
+          style={{
+            fontSize: 12,
+            opacity: 0.7,
+            fontStyle: 'italic',
+            marginLeft: 4,
+          }}
+        >
+          Saving...
+        </span>
+      )}
     </div>
   )
 }

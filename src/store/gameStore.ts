@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ChickData } from '../types/chick'
 import { createEgg } from './chickFactory'
+import { loadGame, saveGame as persistSave, startAutoSave } from '../systems/persistence'
 
 export type FoodType = 'grain' | 'worm' | 'treat'
 
@@ -61,16 +62,21 @@ interface GameState {
   endGame: () => void
   addCoins: (amount: number) => void
   boostAllChickMood: (amount: number) => void
+  saveGame: () => void
+  showSaveIndicator: boolean
 }
 
+const savedState = loadGame()
+
 export const useGameStore = create<GameState>((set, get) => ({
-  chicks: [],
-  coins: 100,
-  selectedChickId: null,
+  chicks: savedState?.chicks ?? [],
+  coins: savedState?.coins ?? 100,
+  selectedChickId: savedState?.selectedChickId ?? null,
   selectedFood: null,
   feedingMode: false,
   foodParticles: [],
   currentGame: null,
+  showSaveIndicator: false,
 
   addEgg: (x, y) =>
     set((state) => ({
@@ -217,4 +223,31 @@ export const useGameStore = create<GameState>((set, get) => ({
           : c,
       ),
     })),
+
+  saveGame: () => {
+    const { chicks, coins, selectedChickId } = get()
+    persistSave({ chicks, coins, selectedChickId })
+    set({ showSaveIndicator: true })
+    setTimeout(() => useGameStore.setState({ showSaveIndicator: false }), 1500)
+  },
 }))
+
+// Start auto-save
+startAutoSave(
+  () => {
+    const { chicks, coins, selectedChickId } = useGameStore.getState()
+    return { chicks, coins, selectedChickId }
+  },
+  () => {
+    useGameStore.setState({ showSaveIndicator: true })
+    setTimeout(() => useGameStore.setState({ showSaveIndicator: false }), 1500)
+  },
+)
+
+// Save on page unload
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    const { chicks, coins, selectedChickId } = useGameStore.getState()
+    persistSave({ chicks, coins, selectedChickId })
+  })
+}
