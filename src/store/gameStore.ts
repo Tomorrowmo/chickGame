@@ -77,6 +77,16 @@ export interface EggLayEvent {
   timestamp: number
 }
 
+export interface PendingEgg {
+  id: string
+  chickId: string
+  rarity: Rarity
+  x: number
+  y: number
+  reward: number
+  createdAt: number
+}
+
 interface GameState {
   chicks: ChickData[]
   coins: number
@@ -90,6 +100,7 @@ interface GameState {
   decorations: PlacedDecoration[]
   dirtSpots: DirtSpot[]
   cleaningMode: boolean
+  pendingEggs: PendingEgg[]
   dirtSpawnTimer: number
   shopOpen: boolean
   achievementStats: AchievementStats
@@ -115,6 +126,9 @@ interface GameState {
   addCoins: (amount: number) => void
   boostAllChickMood: (amount: number) => void
   clearEggLayEvents: () => void
+  sellPendingEgg: (eggId: string) => void
+  hatchPendingEgg: (eggId: string) => void
+  dismissPendingEgg: (eggId: string) => void
   saveGame: () => void
   showSaveIndicator: boolean
   setShopOpen: (open: boolean) => void
@@ -148,6 +162,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   currentGame: null,
   eggLayEvents: [],
   decorations: savedState?.decorations ?? [],
+  pendingEggs: [],
   dirtSpots: [],
   cleaningMode: false,
   dirtSpawnTimer: 0,
@@ -217,7 +232,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get()
     const newGameTime = advanceTime(state.gameTime, delta)
     const newEggLayEvents: EggLayEvent[] = []
-    let coinGain = 0
+    const newPendingEggs: PendingEgg[] = []
     let newHatches = 0
 
     const updated = state.chicks.map((chick) => {
@@ -264,7 +279,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         eggTimer = eggTimer - delta * speed
         if (eggTimer <= 0) {
           const reward = EGG_COIN_REWARD[chick.rarity]
-          coinGain += reward
           eggsLaid += 1
           eggTimer = EGG_TIMER_INITIAL
           newEggLayEvents.push({
@@ -273,6 +287,15 @@ export const useGameStore = create<GameState>((set, get) => ({
             y: chick.y,
             reward,
             timestamp: Date.now(),
+          })
+          newPendingEggs.push({
+            id: `egg-${chick.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            chickId: chick.id,
+            rarity: chick.rarity,
+            x: chick.x,
+            y: chick.y,
+            reward,
+            createdAt: Date.now(),
           })
         }
       }
@@ -304,16 +327,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       dirtSpots: newDirtSpots,
       dirtSpawnTimer: newDirtTimer,
     }
-    if (coinGain > 0) {
-      updates.coins = state.coins + coinGain
-    }
     if (newEggLayEvents.length > 0) {
       updates.eggLayEvents = [...state.eggLayEvents, ...newEggLayEvents]
+    }
+    if (newPendingEggs.length > 0) {
+      updates.pendingEggs = [...state.pendingEggs, ...newPendingEggs]
     }
     set(updates as GameState)
     if (newEggLayEvents.length > 0) {
       get().incrementStat('totalEggsLaid', newEggLayEvents.length)
-      get().incrementStat('totalCoinsFromEggs', coinGain)
     }
     if (newHatches > 0) {
       get().incrementStat('totalChicksHatched', newHatches)
@@ -384,6 +406,37 @@ export const useGameStore = create<GameState>((set, get) => ({
     })),
 
   clearEggLayEvents: () => set({ eggLayEvents: [] }),
+
+  sellPendingEgg: (eggId) => {
+    const state = get()
+    const egg = state.pendingEggs.find((e) => e.id === eggId)
+    if (!egg) return
+    set({
+      pendingEggs: state.pendingEggs.filter((e) => e.id !== eggId),
+      coins: state.coins + egg.reward,
+    })
+    get().incrementStat('totalCoinsFromEggs', egg.reward)
+  },
+
+  hatchPendingEgg: (eggId) => {
+    const state = get()
+    const egg = state.pendingEggs.find((e) => e.id === eggId)
+    if (!egg) return
+    // Create a new egg chick in the grass near the chicken
+    const offsetX = (Math.random() - 0.5) * 80
+    const newEggX = Math.max(60, Math.min(1380, egg.x + offsetX))
+    const newEggY = Math.max(570, Math.min(850, egg.y + 30 + Math.random() * 40))
+    const newChick = createEgg(newEggX, newEggY)
+    set({
+      pendingEggs: state.pendingEggs.filter((e) => e.id !== eggId),
+      chicks: [...state.chicks, newChick],
+    })
+  },
+
+  dismissPendingEgg: (eggId) => {
+    // Same as sell (fallback)
+    get().sellPendingEgg(eggId)
+  },
 
   saveGame: () => {
     const { chicks, coins, selectedChickId, decorations, gameTime, achievementStats, unlockedAchievements } = get()

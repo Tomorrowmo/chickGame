@@ -15,6 +15,7 @@ import { HatchEffect } from './HatchEffect'
 import { FoodParticles } from './FoodParticles'
 import { SwipeTrail } from './SwipeTrail'
 import { DirtSpots } from './DirtSpots'
+import { EggChoice } from './EggChoice'
 import { HideAndSeekGame, HideAndSeekPixi } from '../games/HideAndSeek'
 import { ChickRaceGame, ChickRacePixi, ChickRaceOverlay } from '../games/ChickRace'
 import { FetchGame, FetchPixi, FetchInputLayer, FetchOverlay } from '../games/Fetch'
@@ -257,6 +258,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   const scatterFood = useGameStore((s) => s.scatterFood)
   const currentGame = useGameStore((s) => s.currentGame)
   const cleaningMode = useGameStore((s) => s.cleaningMode)
+  const pendingEggs = useGameStore((s) => s.pendingEggs)
   const addEffect = useClickEffectsStore((s) => s.addEffect)
   const setCursor = useClickEffectsStore((s) => s.setCursor)
   const triggerPondSplash = useClickEffectsStore((s) => s.triggerPondSplash)
@@ -582,6 +584,9 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
               holdCursorX={heldChickId === chick.id ? cursorPos.x : undefined}
               holdCursorY={heldChickId === chick.id ? cursorPos.y : undefined}
             />
+          ))}
+          {pendingEggs.slice(-3).map((egg) => (
+            <EggChoice key={egg.id} egg={egg} />
           ))}
           {hatchEffects.map((effect) => (
             <HatchEffect

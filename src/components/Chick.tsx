@@ -436,39 +436,7 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
     [isEgg, isHatching, data.direction, data.currentAction, data.mood, breed, isBaby, bodyRadius, appearance],
   )
 
-  // Egg-laying floating text
-  const [floatingText, setFloatingText] = useState<{ text: string; key: number } | null>(null)
-  const floatingRef = useRef({ timer: 0, active: false })
-  const prevEggsLaidRef = useRef(data.eggsLaid)
-
-  useEffect(() => {
-    if (data.eggsLaid > prevEggsLaidRef.current) {
-      const reward = data.rarity === 'rare' ? 20 : data.rarity === 'special' ? 10 : 5
-      setFloatingText({ text: `\uD83E\uDD5A+${reward}`, key: Date.now() })
-      floatingRef.current = { timer: 0, active: true }
-    }
-    prevEggsLaidRef.current = data.eggsLaid
-  }, [data.eggsLaid, data.rarity])
-
-  const floatingOffsetRef = useRef(0)
-  const floatingAlphaRef = useRef(1)
-
-  useTick((ticker) => {
-    const f = floatingRef.current
-    if (f.active) {
-      f.timer += ticker.deltaTime
-      const duration = 90 // ~1.5s
-      const progress = f.timer / duration
-      floatingOffsetRef.current = -progress * 40
-      floatingAlphaRef.current = 1 - progress
-      if (f.timer >= duration) {
-        f.active = false
-        setFloatingText(null)
-        floatingOffsetRef.current = 0
-        floatingAlphaRef.current = 1
-      }
-    }
-  })
+  // Egg-laying is now handled by the EggChoice component (pendingEggs system)
 
   // Egg progress indicator for adults
   const isAdult = data.stage === 'adult'
@@ -612,16 +580,6 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
         ))}
         {showEggIndicator && (
           <pixiGraphics draw={drawEggIndicator} x={18} y={-18} />
-        )}
-        {floatingText && (
-          <pixiText
-            text={floatingText.text}
-            x={0}
-            y={-44 + floatingOffsetRef.current}
-            anchor={0.5}
-            alpha={floatingAlphaRef.current}
-            style={{ fontSize: 14, fontWeight: 'bold', fill: 0xf5a623 }}
-          />
         )}
       </pixiContainer>
     </>
