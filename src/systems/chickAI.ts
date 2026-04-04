@@ -216,13 +216,52 @@ export function updateChickAI(
       }
     }
 
-    // Pick new target when starting to walk
+    // Pick new target when starting to walk — prefer positions away from clusters
     if (updates.currentAction === 'walking') {
-      updates.targetX =
-        WORLD_X_MIN + Math.random() * (WORLD_X_MAX - WORLD_X_MIN)
-      updates.targetY =
-        GROUND_Y_MIN + Math.random() * (GROUND_Y_MAX - GROUND_Y_MIN)
+      let bestX = WORLD_X_MIN + Math.random() * (WORLD_X_MAX - WORLD_X_MIN)
+      let bestY = GROUND_Y_MIN + Math.random() * (GROUND_Y_MAX - GROUND_Y_MIN)
+      let bestMinDist = 0
+      // Try a few random candidates and pick the one farthest from nearest chick
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const cx = WORLD_X_MIN + Math.random() * (WORLD_X_MAX - WORLD_X_MIN)
+        const cy = GROUND_Y_MIN + Math.random() * (GROUND_Y_MAX - GROUND_Y_MIN)
+        let minDist = Infinity
+        for (const other of otherChicks) {
+          const d = Math.sqrt((cx - other.x) ** 2 + (cy - other.y) ** 2)
+          if (d < minDist) minDist = d
+        }
+        if (minDist > bestMinDist) {
+          bestMinDist = minDist
+          bestX = cx
+          bestY = cy
+        }
+      }
+      updates.targetX = bestX
+      updates.targetY = bestY
     }
+  }
+
+  // === Separation: push away from chicks that are too close ===
+  const SEPARATION_RADIUS = 30
+  const SEPARATION_FORCE = 0.3
+  let sepX = 0
+  let sepY = 0
+  for (const other of otherChicks) {
+    const dx = chick.x - other.x
+    const dy = chick.y - other.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist < SEPARATION_RADIUS && dist > 0.1) {
+      // Push away proportional to how close
+      const strength = (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
+      sepX += (dx / dist) * strength * SEPARATION_FORCE * delta
+      sepY += (dy / dist) * strength * SEPARATION_FORCE * delta
+    }
+  }
+  if (sepX !== 0 || sepY !== 0) {
+    const newX = Math.max(WORLD_X_MIN, Math.min(WORLD_X_MAX, (updates.x ?? chick.x) + sepX))
+    const newY = Math.max(GROUND_Y_MIN, Math.min(GROUND_Y_MAX, (updates.y ?? chick.y) + sepY))
+    updates.x = newX
+    updates.y = newY
   }
 
   // Movement

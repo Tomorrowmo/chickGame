@@ -97,6 +97,10 @@ function GameLoop() {
     // Get held chick id (skip AI for held chicks)
     const heldId = _heldChickId
 
+    // Track how many chicks are following the cursor this tick (max 2)
+    let cursorFollowers = 0
+    const MAX_CURSOR_FOLLOWERS = 2
+
     // Run AI for each chick
     for (const chick of latestChicks) {
       if (chick.stage === 'egg' || chick.stage === 'hatching') continue
@@ -168,19 +172,27 @@ function GameLoop() {
         }
       }
 
-      // Cursor-following: if cursor is on grass and chick is close, override target
-      if (cursorOnGrass) {
+      // Cursor-following: limited to MAX_CURSOR_FOLLOWERS, only curious chicks follow
+      if (cursorOnGrass && cursorFollowers < MAX_CURSOR_FOLLOWERS) {
         const dx = cursorX - chick.x
         const dy = cursorY - chick.y
         const dist = Math.sqrt(dx * dx + dy * dy)
         if (dist < CURSOR_ATTRACT_RADIUS && dist > 5) {
-          updateChick(chick.id, {
-            currentAction: 'walking',
-            targetX: cursorX,
-            targetY: cursorY,
-            direction: dx > 0 ? 'right' : 'left',
-          })
-          continue // skip normal AI for this chick
+          // Only curious chicks follow: happy 30%, normal 10%, bored/angry never
+          const followChance =
+            chick.mood === 'happy' ? 0.3 :
+            chick.mood === 'normal' ? 0.1 :
+            0 // bored and angry never follow
+          if (followChance > 0 && Math.random() < followChance) {
+            updateChick(chick.id, {
+              currentAction: 'walking',
+              targetX: cursorX,
+              targetY: cursorY,
+              direction: dx > 0 ? 'right' : 'left',
+            })
+            cursorFollowers++
+            continue // skip normal AI for this chick
+          }
         }
       }
 

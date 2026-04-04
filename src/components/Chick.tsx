@@ -17,6 +17,29 @@ const STAGE_SCALE: Record<string, number> = {
   adult: 1.0,
 }
 
+/** Breed-specific body colors and sizes */
+interface BreedAppearance {
+  bodyColor: number
+  beakColor: number
+  eyeColor: number
+  babyRadius: number
+  adultRadius: number
+}
+
+const BREED_APPEARANCES: Record<string, BreedAppearance> = {
+  white:    { bodyColor: 0xFFFAFA, beakColor: 0xFFA07A, eyeColor: 0x333333, babyRadius: 14, adultRadius: 18 },
+  yellow:   { bodyColor: 0xFFD700, beakColor: 0xFF8C00, eyeColor: 0x000000, babyRadius: 15, adultRadius: 20 },
+  brown:    { bodyColor: 0xCD853F, beakColor: 0x8B4513, eyeColor: 0x000000, babyRadius: 15, adultRadius: 19 },
+  spotted:  { bodyColor: 0xFFFAFA, beakColor: 0xFF8C00, eyeColor: 0x000000, babyRadius: 15, adultRadius: 19 },
+  striped:  { bodyColor: 0xFFD700, beakColor: 0xFF8C00, eyeColor: 0x000000, babyRadius: 14, adultRadius: 19 },
+  colorful: { bodyColor: 0xFFD700, beakColor: 0xFF6347, eyeColor: 0x000000, babyRadius: 15, adultRadius: 20 },
+  golden:   { bodyColor: 0xFFD700, beakColor: 0xDAA520, eyeColor: 0x8B0000, babyRadius: 16, adultRadius: 22 },
+  rainbow:  { bodyColor: 0xFF6B6B, beakColor: 0xFF8C00, eyeColor: 0x4B0082, babyRadius: 16, adultRadius: 21 },
+  crystal:  { bodyColor: 0xADD8E6, beakColor: 0x87CEEB, eyeColor: 0x4169E1, babyRadius: 14, adultRadius: 21 },
+}
+
+const DEFAULT_APPEARANCE: BreedAppearance = BREED_APPEARANCES.yellow
+
 const MOOD_EMOJI: Record<string, string> = {
   happy: '\u2764\uFE0F',
   bored: '\uD83D\uDCA4',
@@ -249,6 +272,11 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
     [isEgg],
   )
 
+  const breed = data.breed
+  const appearance = BREED_APPEARANCES[breed] ?? DEFAULT_APPEARANCE
+  const isBaby = data.stage === 'baby'
+  const bodyRadius = isBaby ? appearance.babyRadius : appearance.adultRadius
+
   const drawBody = useCallback(
     (g: Graphics) => {
       g.clear()
@@ -262,52 +290,126 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
 
         // Draw cracks when hatching
         if (isHatching) {
-          // Crack 1: jagged line from top-right
           g.moveTo(4, -18)
             .lineTo(2, -12)
             .lineTo(6, -8)
             .lineTo(3, -3)
             .stroke({ width: 1.5, color: 0x8b7d6b })
-
-          // Crack 2: from left side
           g.moveTo(-14, -4)
             .lineTo(-9, -2)
             .lineTo(-11, 3)
             .lineTo(-6, 5)
             .stroke({ width: 1.5, color: 0x8b7d6b })
-
-          // Crack 3: small crack from bottom
           g.moveTo(2, 16)
             .lineTo(0, 10)
             .lineTo(4, 7)
             .stroke({ width: 1, color: 0x8b7d6b })
         }
       } else {
-        // Body: round yellow circle
-        g.circle(0, 0, 20).fill(0xffd700)
+        const r = bodyRadius
+        const dir = data.direction === 'right' ? 1 : -1
 
-        // Eye: black dot
-        const eyeX = data.direction === 'right' ? 6 : -6
-        g.circle(eyeX, -5, 3).fill(0x000000)
+        // --- Breed-specific body drawing ---
+        if (breed === 'colorful') {
+          // Rainbow/multicolor body: 3 color arcs
+          g.arc(0, 0, r, -Math.PI / 2, Math.PI / 6).fill(0xFF4444)
+          g.moveTo(0, 0)
+          g.arc(0, 0, r, Math.PI / 6, 5 * Math.PI / 6).fill(0x4488FF)
+          g.moveTo(0, 0)
+          g.arc(0, 0, r, 5 * Math.PI / 6, 3 * Math.PI / 2).fill(0x44CC44)
+          // Overlay a slightly smaller circle for smooth center
+          g.circle(0, 0, r * 0.55).fill(0xFFE066)
+        } else if (breed === 'rainbow') {
+          // Rainbow gradient appearance: concentric colored rings
+          const rainbowColors = [0xFF0000, 0xFF8800, 0xFFFF00, 0x00CC00, 0x0066FF, 0x8800FF]
+          for (let i = rainbowColors.length - 1; i >= 0; i--) {
+            const ringR = r * (0.4 + 0.6 * (i + 1) / rainbowColors.length)
+            g.circle(0, 0, ringR).fill({ color: rainbowColors[i], alpha: 0.7 })
+          }
+          g.circle(0, 0, r * 0.35).fill(0xFFFFFF)
+        } else if (breed === 'crystal') {
+          // Semi-transparent light blue body with white shimmer highlights
+          g.circle(0, 0, r).fill({ color: appearance.bodyColor, alpha: 0.6 })
+          g.circle(0, 0, r).stroke({ color: 0xFFFFFF, width: 1.5, alpha: 0.5 })
+          // Shimmer highlights
+          g.circle(-r * 0.3, -r * 0.3, r * 0.2).fill({ color: 0xFFFFFF, alpha: 0.7 })
+          g.circle(r * 0.15, -r * 0.1, r * 0.12).fill({ color: 0xFFFFFF, alpha: 0.5 })
+          g.circle(-r * 0.1, r * 0.2, r * 0.08).fill({ color: 0xE0F0FF, alpha: 0.6 })
+        } else {
+          // Standard round body
+          g.circle(0, 0, r).fill(appearance.bodyColor)
 
-        // Beak: orange triangle pointing in direction
-        const beakDir = data.direction === 'right' ? 1 : -1
-        const beakBaseX = beakDir * 14
+          // White chick: light gray outline for visibility
+          if (breed === 'white') {
+            g.circle(0, 0, r).stroke({ color: 0xD3D3D3, width: 1.5 })
+          }
+        }
+
+        // --- Spotted: brown spots on body ---
+        if (breed === 'spotted') {
+          g.circle(-r * 0.35, -r * 0.2, r * 0.15).fill(0x8B6914)
+          g.circle(r * 0.25, -r * 0.35, r * 0.12).fill(0x8B6914)
+          g.circle(r * 0.1, r * 0.25, r * 0.13).fill(0x8B6914)
+          g.circle(-r * 0.2, r * 0.35, r * 0.1).fill(0x8B6914)
+        }
+
+        // --- Striped: darker horizontal stripes ---
+        if (breed === 'striped') {
+          for (let sy = -1; sy <= 1; sy++) {
+            const stripeY = sy * r * 0.35
+            const halfW = Math.sqrt(Math.max(0, r * r - stripeY * stripeY)) * 0.9
+            g.rect(-halfW, stripeY - 2, halfW * 2, 4).fill({ color: 0xCC8800, alpha: 0.5 })
+          }
+        }
+
+        // --- Golden: crown/crest on head + sparkle ---
+        if (breed === 'golden') {
+          // Small crown on top
+          const crownY = -r - 2
+          g.poly([
+            -8, crownY,
+            -5, crownY - 10,
+            -2, crownY - 4,
+            0, crownY - 12,
+            2, crownY - 4,
+            5, crownY - 10,
+            8, crownY,
+          ]).fill(0xFFD700)
+          g.poly([
+            -8, crownY,
+            -5, crownY - 10,
+            -2, crownY - 4,
+            0, crownY - 12,
+            2, crownY - 4,
+            5, crownY - 10,
+            8, crownY,
+          ]).stroke({ color: 0xDAA520, width: 1 })
+          // Sparkle dots
+          g.circle(r * 0.5, -r * 0.5, 2).fill({ color: 0xFFFFFF, alpha: 0.9 })
+          g.circle(-r * 0.4, r * 0.3, 1.5).fill({ color: 0xFFFFFF, alpha: 0.7 })
+        }
+
+        // Eye
+        const eyeX = dir * r * 0.3
+        g.circle(eyeX, -r * 0.25, r * 0.15).fill(appearance.eyeColor)
+
+        // Beak
+        const beakBaseX = dir * r * 0.7
+        const beakSize = r * 0.5
         g.poly([
-          beakBaseX,
-          -4,
-          beakBaseX + beakDir * 10,
-          0,
-          beakBaseX,
-          4,
-        ]).fill(0xff8c00)
+          beakBaseX, -r * 0.2,
+          beakBaseX + dir * beakSize, 0,
+          beakBaseX, r * 0.2,
+        ]).fill(appearance.beakColor)
 
-        // Feet: two small orange rectangles
-        g.rect(-8, 18, 6, 4).fill(0xff8c00)
-        g.rect(2, 18, 6, 4).fill(0xff8c00)
+        // Feet
+        const footW = r * 0.3
+        const footH = r * 0.2
+        g.rect(-r * 0.4, r * 0.9, footW, footH).fill(appearance.beakColor)
+        g.rect(r * 0.1, r * 0.9, footW, footH).fill(appearance.beakColor)
       }
     },
-    [isEgg, isHatching, data.direction],
+    [isEgg, isHatching, data.direction, breed, bodyRadius, appearance],
   )
 
   // Egg-laying floating text

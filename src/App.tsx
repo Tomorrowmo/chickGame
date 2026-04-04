@@ -22,7 +22,7 @@ function useResponsiveScale() {
       const maxW = window.innerWidth - PADDING * 2
       const maxH = window.innerHeight - PADDING * 2
       const totalHeight = GAME_HEIGHT + TOOLBAR_HEIGHT
-      const s = Math.min(maxW / GAME_WIDTH, maxH / totalHeight, 1)
+      const s = Math.min(maxW / GAME_WIDTH, maxH / totalHeight)
       setScale(s)
     }
     updateScale()
