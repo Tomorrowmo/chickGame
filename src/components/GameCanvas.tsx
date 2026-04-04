@@ -8,6 +8,7 @@ import { Pond } from './scene/Pond'
 import { Bushes } from './scene/Bush'
 import { Fence } from './scene/Fence'
 import { Flowers } from './scene/Flowers'
+import { Coop } from './scene/Coop'
 import { Chick } from './Chick'
 import { ClickEffects } from './ClickEffects'
 import { HatchEffect } from './HatchEffect'
@@ -55,6 +56,7 @@ function GameLoop() {
   const tick = useGameStore((s) => s.tick)
   const updateChick = useGameStore((s) => s.updateChick)
   const currentGame = useGameStore((s) => s.currentGame)
+  const gameTime = useGameStore((s) => s.gameTime)
 
   useTick((ticker) => {
     const delta = ticker.deltaTime
@@ -72,8 +74,11 @@ function GameLoop() {
     const { foodParticles, removeFoodParticle, feedChickWithFood } =
       useGameStore.getState()
 
+    // Get latest chicks for AI (includes tick updates)
+    const latestChicks = useGameStore.getState().chicks
+
     // Run AI for each chick
-    for (const chick of chicks) {
+    for (const chick of latestChicks) {
       if (chick.stage === 'egg' || chick.stage === 'hatching') continue
 
       // Check for nearby food particles first
@@ -139,7 +144,7 @@ function GameLoop() {
         }
       }
 
-      const updates = updateChickAI(chick, delta)
+      const updates = updateChickAI(chick, delta, latestChicks, gameTime)
       if (Object.keys(updates).length > 0) {
         updateChick(chick.id, updates)
       }
@@ -342,6 +347,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           <Fence width={width} />
           <Flowers />
           <Bushes />
+          <Coop />
           <Decorations />
           <ClickEffects />
           <FoodParticles />
