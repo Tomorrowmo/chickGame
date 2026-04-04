@@ -6,8 +6,8 @@ import { gameStart, gameWin, gameLose, pop } from '../systems/audio'
 import type { GamePhase } from './GameOverlay'
 
 /** Canvas dimensions */
-const CANVAS_W = 960
-const CANVAS_H = 640
+const CANVAS_W = 1440
+const CANVAS_H = 900
 
 /** Track layout */
 const NUM_LANES = 4

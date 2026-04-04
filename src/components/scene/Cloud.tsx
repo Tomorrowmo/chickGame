@@ -12,10 +12,11 @@ interface CloudConfig {
 const CLOUDS: CloudConfig[] = [
   { startX: 100, y: 60, speed: 0.3, scale: 1.0 },
   { startX: 450, y: 30, speed: 0.2, scale: 1.3 },
-  { startX: 750, y: 90, speed: 0.4, scale: 0.8 },
+  { startX: 900, y: 90, speed: 0.4, scale: 0.8 },
+  { startX: 1200, y: 50, speed: 0.25, scale: 1.1 },
 ]
 
-const CANVAS_WIDTH = 960
+const CANVAS_WIDTH = 1440
 
 function SingleCloud({ config }: { config: CloudConfig }) {
   const xRef = useRef(config.startX)

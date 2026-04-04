@@ -1,14 +1,14 @@
 import type { ChickData } from '../types/chick'
 import { COOP_POSITION } from '../components/scene/Coop'
 
-const GROUND_Y_MIN = 400 // grass area top
-const GROUND_Y_MAX = 600
-const WORLD_X_MIN = 50
-const WORLD_X_MAX = 910
+const GROUND_Y_MIN = 560 // grass area top (60% of 900)
+const GROUND_Y_MAX = 870
+const WORLD_X_MIN = 60
+const WORLD_X_MAX = 1380
 
-/** Pond is at approximately (700, 500) */
-const POND_X = 700
-const POND_Y = 500
+/** Pond position — will be scaled with the larger canvas */
+const POND_X = 1050
+const POND_Y = 720
 const POND_PLAY_RADIUS = 80
 
 /** How long (ms) a pond splash stays "attractive" to chicks */
@@ -242,8 +242,10 @@ export function updateChickAI(
   }
 
   // === Separation: push away from chicks that are too close ===
-  const SEPARATION_RADIUS = 60
-  const SEPARATION_FORCE = 0.8
+  // Adaptive: reduce separation when there are many chicks so they don't fight forever
+  const chickCount = allChicks.filter(c => c.stage !== 'egg' && c.stage !== 'hatching').length
+  const SEPARATION_RADIUS = chickCount > 30 ? 35 : chickCount > 15 ? 45 : 60
+  const SEPARATION_FORCE = 1.0
   let sepX = 0
   let sepY = 0
   for (const other of otherChicks) {

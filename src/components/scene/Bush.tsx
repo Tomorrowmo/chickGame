@@ -9,9 +9,11 @@ export interface BushPosition {
 
 /** Bush positions exported for use by hide-and-seek (Task 11) */
 export const BUSH_POSITIONS: BushPosition[] = [
-  { x: 80, y: 460, scale: 1.0 },
-  { x: 860, y: 490, scale: 1.2 },
-  { x: 480, y: 580, scale: 0.9 },
+  { x: 100, y: 650, scale: 1.2 },
+  { x: 1300, y: 700, scale: 1.4 },
+  { x: 700, y: 820, scale: 1.1 },
+  { x: 400, y: 680, scale: 1.0 },
+  { x: 1100, y: 850, scale: 1.3 },
 ]
 
 function SingleBush({ pos }: { pos: BushPosition }) {

@@ -1,18 +1,22 @@
 .app-container {
   display: flex;
   justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background: #333;
-  overflow: hidden;
-  padding: 0;
+  align-items: flex-start;
+  min-height: 100vh;
+  background: #222;
   margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .game-outer {
-  display: flex;
-  flex-direction: column;
-  transform-origin: center center;
+  position: relative;
+}
+
+.game-scaler {
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .game-wrapper {
@@ -29,6 +33,8 @@
   color: #fff8e1;
   font-family: "Comic Sans MS", "Chalkboard SE", cursive;
   user-select: none;
+  height: 100vh;
+  width: 100vw;
 }
 
 .loading-chick {

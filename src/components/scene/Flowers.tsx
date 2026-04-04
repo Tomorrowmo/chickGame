@@ -10,11 +10,14 @@ interface FlowerConfig {
 }
 
 const FLOWERS: FlowerConfig[] = [
-  { x: 150, y: 480, petalColor: 0xff6b8a, size: 1.0 },
-  { x: 320, y: 540, petalColor: 0xffdb58, size: 0.8 },
-  { x: 550, y: 460, petalColor: 0xff8c42, size: 1.1 },
-  { x: 200, y: 570, petalColor: 0xc77dff, size: 0.9 },
-  { x: 820, y: 520, petalColor: 0xff6b8a, size: 0.85 },
+  { x: 200, y: 660, petalColor: 0xff6b8a, size: 1.0 },
+  { x: 450, y: 760, petalColor: 0xffdb58, size: 0.8 },
+  { x: 750, y: 640, petalColor: 0xff8c42, size: 1.1 },
+  { x: 300, y: 810, petalColor: 0xc77dff, size: 0.9 },
+  { x: 1200, y: 740, petalColor: 0xff6b8a, size: 0.85 },
+  { x: 900, y: 830, petalColor: 0xffdb58, size: 1.0 },
+  { x: 600, y: 870, petalColor: 0xc77dff, size: 0.75 },
+  { x: 1350, y: 680, petalColor: 0xff8c42, size: 0.9 },
 ]
 
 function SingleFlower({ config }: { config: FlowerConfig }) {

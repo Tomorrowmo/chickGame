@@ -7,7 +7,7 @@ interface PondProps {
   y?: number
 }
 
-export function Pond({ x = 700, y = 500 }: PondProps) {
+export function Pond({ x = 1050, y = 720 }: PondProps) {
   const shimmerRef = useRef(0)
 
   useTick((ticker) => {

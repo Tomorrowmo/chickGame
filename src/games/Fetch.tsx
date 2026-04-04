@@ -6,9 +6,9 @@ import { gameStart, gameWin } from '../systems/audio'
 import type { GamePhase } from './GameOverlay'
 
 /** Canvas dimensions */
-const CANVAS_W = 960
-const CANVAS_H = 640
-const GROUND_Y = 384
+const CANVAS_W = 1440
+const CANVAS_H = 900
+const GROUND_Y = 540
 
 /** Throw settings */
 const THROW_ORIGIN_X = 100

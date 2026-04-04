@@ -10,7 +10,7 @@ const POST_SPACING = 80
 const POST_WIDTH = 8
 const POST_HEIGHT = 50
 const RAIL_HEIGHT = 3
-const FENCE_Y = 600 // near bottom of canvas (640)
+const FENCE_Y = 860 // near bottom of canvas (900)
 
 export function Fence({ width = 960 }: FenceProps) {
   const draw = useCallback(

@@ -277,9 +277,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (newDirtTimer >= DIRT_SPAWN_INTERVAL && state.dirtSpots.length < MAX_DIRT_SPOTS) {
       newDirtTimer = 0
       const margin = 80
-      const grassTop = 400
-      const grassBottom = 580
-      const dx = margin + Math.random() * (860 - margin)
+      const grassTop = 570
+      const grassBottom = 850
+      const dx = margin + Math.random() * (1360 - margin)
       const dy = grassTop + Math.random() * (grassBottom - grassTop)
       newDirtSpots = [
         ...state.dirtSpots,
@@ -422,8 +422,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const decoration: PlacedDecoration = {
       id: `deco-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       type,
-      x: 60 + Math.random() * 840, // within game area
-      y: 400 + Math.random() * 180, // on the grass
+      x: 80 + Math.random() * 1280, // within game area
+      y: 570 + Math.random() * 270, // on the grass
     }
     set({
       coins: state.coins - price,

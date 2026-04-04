@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { Graphics } from 'pixi.js'
 
 /** Chicken coop position — used by AI for night behavior */
-export const COOP_POSITION = { x: 150, y: 500 }
+export const COOP_POSITION = { x: 200, y: 730 }
 
 export function Coop() {
   const draw = useCallback((g: Graphics) => {

@@ -37,8 +37,8 @@ const GRASS_RATIO = 0.6
 const CURSOR_ATTRACT_RADIUS = 100
 
 /** Pond ellipse for click detection (matches Pond.tsx defaults) */
-const POND_X = 700
-const POND_Y = 500
+const POND_X = 1050
+const POND_Y = 720
 const POND_RX = 70
 const POND_RY = 35
 
