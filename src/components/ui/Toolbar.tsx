@@ -205,6 +205,18 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
         <span style={{ fontSize: 11 }}>商店</span>
       </button>
 
+      {/* Achievement button */}
+      <button
+        onClick={() => useGameStore.getState().setAchievementPanelOpen(true)}
+        style={{
+          ...btnBase,
+          background: '#fff8e1',
+        }}
+      >
+        <span style={{ fontSize: 22 }}>🏆</span>
+        <span style={{ fontSize: 11 }}>成就</span>
+      </button>
+
       {/* Clean button (placeholder) */}
       <button
         onClick={() => {}}

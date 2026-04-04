@@ -4,6 +4,7 @@ import { TopBar } from './components/ui/TopBar'
 import { ChickInfoPanel } from './components/ui/ChickInfoPanel'
 import { Toolbar } from './components/ui/Toolbar'
 import { Shop } from './components/ui/Shop'
+import { AchievementPanel, AchievementToast } from './components/ui/Achievements'
 import { Tutorial } from './components/ui/Tutorial'
 import { useGameStore } from './store/gameStore'
 import './App.css'
@@ -62,6 +63,7 @@ function App() {
   return (
     <div className="app-container">
       <Tutorial />
+      <AchievementToast />
       <div
         className="game-outer"
         style={{
@@ -80,6 +82,7 @@ function App() {
           <TopBar />
           <ChickInfoPanel />
           <Shop />
+          <AchievementPanel />
         </div>
         <Toolbar onAddEgg={handleAddEgg} />
       </div>

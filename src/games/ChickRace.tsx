@@ -383,6 +383,7 @@ export function ChickRaceGame() {
   const endGame = useGameStore((s) => s.endGame)
   const addCoins = useGameStore((s) => s.addCoins)
   const boostAllChickMood = useGameStore((s) => s.boostAllChickMood)
+  const incrementStat = useGameStore((s) => s.incrementStat)
 
   const [phase, setPhase] = useState<GamePhase>('ready')
   const [raceState, setRaceState] = useState<'selecting' | 'countdown' | 'racing' | 'done'>('selecting')
@@ -871,11 +872,12 @@ export function ChickRaceGame() {
     boostAllChickMood(10)
     setPhase('ended')
     if (playerPlace === 1) {
+      incrementStat('racesWon')
       gameWin()
     } else {
       gameLose()
     }
-  }, [raceState, playerPlace, addCoins, boostAllChickMood])
+  }, [raceState, playerPlace, addCoins, boostAllChickMood, incrementStat])
 
   const handlePlayAgain = useCallback(() => {
     handleStart()

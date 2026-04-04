@@ -1,8 +1,10 @@
 import type { ChickData } from '../types/chick'
 import type { PlacedDecoration } from '../store/gameStore'
+import type { AchievementStats } from '../store/achievementData'
+import { DEFAULT_ACHIEVEMENT_STATS } from '../store/achievementData'
 
 const SAVE_KEY = 'linda-game-save'
-const SAVE_VERSION = 4
+const SAVE_VERSION = 5
 const AUTO_SAVE_INTERVAL = 30_000 // 30 seconds
 
 interface SaveData {
@@ -12,6 +14,8 @@ interface SaveData {
   selectedChickId: string | null
   decorations: PlacedDecoration[]
   gameTime: number
+  achievementStats: AchievementStats
+  unlockedAchievements: string[]
   savedAt: number
 }
 
@@ -21,6 +25,8 @@ export interface PersistentState {
   selectedChickId: string | null
   decorations: PlacedDecoration[]
   gameTime: number
+  achievementStats: AchievementStats
+  unlockedAchievements: string[]
 }
 
 export function saveGame(state: PersistentState): void {
@@ -32,6 +38,8 @@ export function saveGame(state: PersistentState): void {
       selectedChickId: state.selectedChickId,
       decorations: state.decorations,
       gameTime: state.gameTime,
+      achievementStats: state.achievementStats,
+      unlockedAchievements: state.unlockedAchievements,
       savedAt: Date.now(),
     }
     localStorage.setItem(SAVE_KEY, JSON.stringify(data))
@@ -82,12 +90,25 @@ export function loadGame(): PersistentState | null {
       data.version = 4
     }
 
+    // Migrate from v4: add achievements
+    if (data.version < 5) {
+      data.achievementStats = data.achievementStats ?? { ...DEFAULT_ACHIEVEMENT_STATS }
+      data.unlockedAchievements = data.unlockedAchievements ?? []
+      // Ensure gamesPlayed is an array (not a Set)
+      if (data.achievementStats && !Array.isArray(data.achievementStats.gamesPlayed)) {
+        data.achievementStats.gamesPlayed = []
+      }
+      data.version = 5
+    }
+
     return {
       chicks: data.chicks,
       coins: data.coins,
       selectedChickId: data.selectedChickId ?? null,
       decorations: data.decorations ?? [],
       gameTime: data.gameTime ?? 480,
+      achievementStats: data.achievementStats ?? { ...DEFAULT_ACHIEVEMENT_STATS },
+      unlockedAchievements: data.unlockedAchievements ?? [],
     }
   } catch {
     console.warn('[persistence] Corrupted save data, clearing')

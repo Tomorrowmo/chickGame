@@ -4,6 +4,8 @@ import { createEgg, createSpecialEgg, createRareEgg, createMysteryEgg } from './
 import { loadGame, saveGame as persistSave, startAutoSave } from '../systems/persistence'
 import { advanceTime } from '../systems/timeSystem'
 import type { DecorationType } from './shopData'
+import { ACHIEVEMENTS, DEFAULT_ACHIEVEMENT_STATS } from './achievementData'
+import type { AchievementStats } from './achievementData'
 
 export type FoodType = 'grain' | 'worm' | 'treat' | 'rainbow_grain' | 'cake'
 
@@ -81,6 +83,10 @@ interface GameState {
   eggLayEvents: EggLayEvent[]
   decorations: PlacedDecoration[]
   shopOpen: boolean
+  achievementStats: AchievementStats
+  unlockedAchievements: string[]
+  pendingAchievementToast: { id: string; icon: string; name: string; reward: number } | null
+  achievementPanelOpen: boolean
 
   // Actions
   addEgg: (x: number, y: number) => void
@@ -108,6 +114,11 @@ interface GameState {
   buyMysteryEgg: (x: number, y: number) => boolean
   buyDecoration: (type: DecorationType, price: number) => boolean
   buyPremiumFood: (foodType: FoodType, price: number) => boolean
+  checkAchievements: () => void
+  incrementStat: (stat: keyof AchievementStats, value?: number) => void
+  recordGamePlayed: (gameType: string) => void
+  clearAchievementToast: () => void
+  setAchievementPanelOpen: (open: boolean) => void
 }
 
 const savedState = loadGame()
@@ -125,6 +136,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   decorations: savedState?.decorations ?? [],
   shopOpen: false,
   showSaveIndicator: false,
+  achievementStats: savedState?.achievementStats ?? { ...DEFAULT_ACHIEVEMENT_STATS },
+  unlockedAchievements: savedState?.unlockedAchievements ?? [],
+  pendingAchievementToast: null,
+  achievementPanelOpen: false,
 
   addEgg: (x, y) =>
     set((state) => ({
@@ -170,20 +185,23 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }),
 
-  petChick: (id) =>
+  petChick: (id) => {
     set((state) => ({
       chicks: state.chicks.map((c) =>
         c.id === id
           ? { ...c, moodValue: Math.min(100, c.moodValue + 15) }
           : c,
       ),
-    })),
+    }))
+    get().incrementStat('chicksClicked')
+  },
 
   tick: (delta) => {
     const state = get()
     const newGameTime = advanceTime(state.gameTime, delta)
     const newEggLayEvents: EggLayEvent[] = []
     let coinGain = 0
+    let newHatches = 0
 
     const updated = state.chicks.map((chick) => {
       let { hunger, moodValue, growthProgress, stage, mood, eggTimer, eggsLaid } = chick
@@ -206,8 +224,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         const stages = ['egg', 'hatching', 'baby', 'juvenile', 'adult'] as const
         const idx = stages.indexOf(stage)
         if (idx < stages.length - 1) {
+          const prevStage = stage
           stage = stages[idx + 1]
           growthProgress = 0
+          if (prevStage === 'hatching' && stage === 'baby') {
+            newHatches++
+          }
         }
       }
 
@@ -241,6 +263,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       updates.eggLayEvents = [...state.eggLayEvents, ...newEggLayEvents]
     }
     set(updates as GameState)
+    if (newEggLayEvents.length > 0) {
+      get().incrementStat('totalEggsLaid', newEggLayEvents.length)
+      get().incrementStat('totalCoinsFromEggs', coinGain)
+    }
+    if (newHatches > 0) {
+      get().incrementStat('totalChicksHatched', newHatches)
+    }
   },
 
   setSelectedFood: (food) =>
@@ -271,6 +300,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       coins: state.coins - cost,
       foodParticles: [...state.foodParticles, ...particles],
     })
+    get().incrementStat('totalFeedCount')
     return true
   },
 
@@ -286,8 +316,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       ),
     })),
 
-  startGame: (game) =>
-    set({ currentGame: game, feedingMode: false, selectedFood: null }),
+  startGame: (game) => {
+    set({ currentGame: game, feedingMode: false, selectedFood: null })
+    get().recordGamePlayed(game)
+  },
 
   endGame: () => set({ currentGame: null }),
 
@@ -306,8 +338,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   clearEggLayEvents: () => set({ eggLayEvents: [] }),
 
   saveGame: () => {
-    const { chicks, coins, selectedChickId, decorations, gameTime } = get()
-    persistSave({ chicks, coins, selectedChickId, decorations, gameTime })
+    const { chicks, coins, selectedChickId, decorations, gameTime, achievementStats, unlockedAchievements } = get()
+    persistSave({ chicks, coins, selectedChickId, decorations, gameTime, achievementStats, unlockedAchievements })
     set({ showSaveIndicator: true })
     setTimeout(() => useGameStore.setState({ showSaveIndicator: false }), 1500)
   },
@@ -321,6 +353,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       coins: state.coins - 50,
       chicks: [...state.chicks, createSpecialEgg(x, y)],
     })
+    get().incrementStat('totalShopPurchases')
     return true
   },
 
@@ -331,6 +364,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       coins: state.coins - 150,
       chicks: [...state.chicks, createRareEgg(x, y)],
     })
+    get().incrementStat('totalShopPurchases')
     return true
   },
 
@@ -341,6 +375,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       coins: state.coins - 80,
       chicks: [...state.chicks, createMysteryEgg(x, y)],
     })
+    get().incrementStat('totalShopPurchases')
     return true
   },
 
@@ -357,8 +392,66 @@ export const useGameStore = create<GameState>((set, get) => ({
       coins: state.coins - price,
       decorations: [...state.decorations, decoration],
     })
+    get().incrementStat('totalShopPurchases')
     return true
   },
+
+  checkAchievements: () => {
+    const state = get()
+    const { achievementStats, unlockedAchievements, chicks } = state
+    const nonEggChicks = chicks.filter((c) => c.stage !== 'egg' && c.stage !== 'hatching')
+    const context = {
+      chickCount: nonEggChicks.length,
+      hasSpecial: chicks.some((c) => c.rarity === 'special'),
+      hasRare: chicks.some((c) => c.rarity === 'rare'),
+      breedCount: new Set(nonEggChicks.map((c) => c.breed)).size,
+    }
+
+    for (const achievement of ACHIEVEMENTS) {
+      if (unlockedAchievements.includes(achievement.id)) continue
+      if (achievement.check(achievementStats, context)) {
+        set({
+          unlockedAchievements: [...get().unlockedAchievements, achievement.id],
+          coins: get().coins + achievement.reward,
+          pendingAchievementToast: {
+            id: achievement.id,
+            icon: achievement.icon,
+            name: achievement.name,
+            reward: achievement.reward,
+          },
+        })
+      }
+    }
+  },
+
+  incrementStat: (stat, value = 1) => {
+    const stats = get().achievementStats
+    if (stat === 'gamesPlayed') return // use recordGamePlayed instead
+    set({
+      achievementStats: {
+        ...stats,
+        [stat]: (stats[stat] as number) + value,
+      },
+    })
+    // Defer check to after state update
+    setTimeout(() => get().checkAchievements(), 0)
+  },
+
+  recordGamePlayed: (gameType) => {
+    const stats = get().achievementStats
+    if (stats.gamesPlayed.includes(gameType)) return
+    set({
+      achievementStats: {
+        ...stats,
+        gamesPlayed: [...stats.gamesPlayed, gameType],
+      },
+    })
+    setTimeout(() => get().checkAchievements(), 0)
+  },
+
+  clearAchievementToast: () => set({ pendingAchievementToast: null }),
+
+  setAchievementPanelOpen: (open) => set({ achievementPanelOpen: open }),
 
   buyPremiumFood: (foodType, price) => {
     const state = get()
@@ -382,6 +475,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       coins: state.coins - price,
       foodParticles: [...state.foodParticles, ...particles],
     })
+    get().incrementStat('totalShopPurchases')
+    get().incrementStat('totalFeedCount')
     return true
   },
 }))
@@ -389,8 +484,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 // Start auto-save
 startAutoSave(
   () => {
-    const { chicks, coins, selectedChickId, decorations, gameTime } = useGameStore.getState()
-    return { chicks, coins, selectedChickId, decorations, gameTime }
+    const { chicks, coins, selectedChickId, decorations, gameTime, achievementStats, unlockedAchievements } = useGameStore.getState()
+    return { chicks, coins, selectedChickId, decorations, gameTime, achievementStats, unlockedAchievements }
   },
   () => {
     useGameStore.setState({ showSaveIndicator: true })
@@ -401,7 +496,7 @@ startAutoSave(
 // Save on page unload
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
-    const { chicks, coins, selectedChickId, decorations, gameTime } = useGameStore.getState()
-    persistSave({ chicks, coins, selectedChickId, decorations, gameTime })
+    const { chicks, coins, selectedChickId, decorations, gameTime, achievementStats, unlockedAchievements } = useGameStore.getState()
+    persistSave({ chicks, coins, selectedChickId, decorations, gameTime, achievementStats, unlockedAchievements })
   })
 }
