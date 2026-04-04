@@ -20,7 +20,7 @@ import { GameOverlay } from '../games/GameOverlay'
 import { useGameStore, type PlacedDecoration } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
 import { updateChickAI } from '../systems/chickAI'
-import { chirp, feed } from '../systems/audio'
+import { chirp, feed, splash as splashSound } from '../systems/audio'
 import type { ChickData } from '../types/chick'
 import type { FederatedPointerEvent } from 'pixi.js'
 
@@ -33,6 +33,18 @@ interface GameCanvasProps {
 
 const GRASS_RATIO = 0.6
 const CURSOR_ATTRACT_RADIUS = 100
+
+/** Pond ellipse for click detection (matches Pond.tsx defaults) */
+const POND_X = 700
+const POND_Y = 500
+const POND_RX = 70
+const POND_RY = 35
+
+function isInsidePond(x: number, y: number): boolean {
+  const dx = (x - POND_X) / POND_RX
+  const dy = (y - POND_Y) / POND_RY
+  return dx * dx + dy * dy <= 1
+}
 
 /** Shared held chick id so GameLoop can skip AI for held chicks */
 let _heldChickId: string | null = null
@@ -151,7 +163,8 @@ function GameLoop() {
         }
       }
 
-      const updates = updateChickAI(chick, delta, latestChicks, gameTime)
+      const { pondSplashTime } = useClickEffectsStore.getState()
+      const updates = updateChickAI(chick, delta, latestChicks, gameTime, pondSplashTime)
       if (Object.keys(updates).length > 0) {
         updateChick(chick.id, updates)
       }
@@ -238,6 +251,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   const currentGame = useGameStore((s) => s.currentGame)
   const addEffect = useClickEffectsStore((s) => s.addEffect)
   const setCursor = useClickEffectsStore((s) => s.setCursor)
+  const triggerPondSplash = useClickEffectsStore((s) => s.triggerPondSplash)
 
   // Hide-and-seek game state (hook is always called, but only active when currentGame === 'hideAndSeek')
   const hideAndSeek = HideAndSeekGame()
@@ -370,6 +384,36 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
       const x = pos.x
       const y = pos.y
 
+      // Pond splash: detect click inside the pond ellipse
+      if (isInsidePond(x, y)) {
+        addEffect('splash', x, y)
+        triggerPondSplash()
+        splashSound()
+
+        // Attract nearby chicks toward the pond (+5 mood for chicks already close)
+        const allChicks = useGameStore.getState().chicks
+        for (const chick of allChicks) {
+          if (chick.stage === 'egg' || chick.stage === 'hatching') continue
+          const dx = POND_X - chick.x
+          const dy = POND_Y - chick.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 150) {
+            // Walk toward pond edge
+            const angle = Math.atan2(chick.y - POND_Y, chick.x - POND_X)
+            const edgeX = POND_X + Math.cos(angle) * 55
+            const edgeY = POND_Y + Math.sin(angle) * 30
+            updateChick(chick.id, {
+              currentAction: 'walking',
+              targetX: edgeX,
+              targetY: Math.max(400, edgeY),
+              direction: dx > 0 ? 'right' : 'left',
+              moodValue: Math.min(100, chick.moodValue + 5),
+            })
+          }
+        }
+        return
+      }
+
       // Feeding mode: scatter food on grass
       if (feedingMode && selectedFood && y > grassY) {
         scatterFood(selectedFood, x, y)
@@ -386,7 +430,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
         addEffect(type, x, y)
       }
     },
-    [addEffect, grassY, feedingMode, selectedFood, scatterFood, heldChickId],
+    [addEffect, grassY, feedingMode, selectedFood, scatterFood, heldChickId, triggerPondSplash, updateChick],
   )
 
   /** Track cursor position for chick attraction and held chick */

@@ -141,6 +141,17 @@ export function pop() {
   freqRamp('sine', 600, 200, t, 0.08, 0.2)
 }
 
+/** Water splash — filtered noise burst + descending bubble tones */
+export function splash() {
+  const t = getCtx().currentTime
+  // Filtered white noise for the "splat"
+  noise(t, 0.25, 0.2, 800)
+  // Bubble tones descending
+  freqRamp('sine', 1200, 400, t, 0.15, 0.12)
+  freqRamp('sine', 900, 300, t + 0.05, 0.12, 0.1)
+  freqRamp('sine', 600, 200, t + 0.1, 0.1, 0.08)
+}
+
 /** Upbeat jingle — 4 ascending notes */
 export function gameStart() {
   const t = getCtx().currentTime

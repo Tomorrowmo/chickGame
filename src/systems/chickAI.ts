@@ -11,6 +11,11 @@ const POND_X = 700
 const POND_Y = 500
 const POND_PLAY_RADIUS = 80
 
+/** How long (ms) a pond splash stays "attractive" to chicks */
+const SPLASH_ATTRACT_DURATION = 3000
+/** Radius within which chicks are attracted to a splash */
+const SPLASH_ATTRACT_RADIUS = 250
+
 /** Night is 20:00 (1200 min) to 5:00 (300 min) */
 function isNight(gameTime: number): boolean {
   return gameTime >= 1200 || gameTime < 300
@@ -32,6 +37,7 @@ export function updateChickAI(
   delta: number,
   allChicks: ChickData[],
   gameTime: number,
+  pondSplashTime?: number,
 ): Partial<ChickData> {
   if (chick.stage === 'egg' || chick.stage === 'hatching') {
     return {} // Eggs don't move
@@ -40,6 +46,32 @@ export function updateChickAI(
   const updates: Partial<ChickData> = {}
   const night = isNight(gameTime)
   const dawn = isDawn(gameTime)
+
+  // === Pond splash attraction ===
+  const splashActive = pondSplashTime != null && (Date.now() - pondSplashTime) < SPLASH_ATTRACT_DURATION
+  if (splashActive && !night) {
+    const distToPond = distBetween(chick, { x: POND_X, y: POND_Y })
+    if (distToPond < SPLASH_ATTRACT_RADIUS && distToPond > 50) {
+      // High chance to run toward the pond
+      if (Math.random() < 0.03 * delta) {
+        const angle = Math.atan2(chick.y - POND_Y, chick.x - POND_X)
+        const edgeX = POND_X + Math.cos(angle) * 50
+        const edgeY = POND_Y + Math.sin(angle) * 25
+        updates.currentAction = 'walking'
+        updates.targetX = edgeX
+        updates.targetY = Math.max(GROUND_Y_MIN, edgeY)
+        updates.direction = (POND_X - chick.x) > 0 ? 'right' : 'left'
+        return updates
+      }
+    }
+    // Chicks already at the pond edge: play/bob in water
+    if (distToPond <= 60 && chick.currentAction === 'idle') {
+      if (Math.random() < 0.05 * delta) {
+        updates.currentAction = 'eating' // bobbing = playing in water
+        return updates
+      }
+    }
+  }
 
   // === Night behavior: walk to coop and sleep ===
   if (night) {

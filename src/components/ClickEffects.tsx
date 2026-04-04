@@ -108,6 +108,70 @@ function ButterflyEffect({ effect }: { effect: ClickEffect }) {
   )
 }
 
+/** Renders a water splash effect: droplets spraying up and a ripple ring */
+function SplashEffect({ effect }: { effect: ClickEffect }) {
+  const progress = effect.age / effect.maxAge // 0 → 1
+  const alpha = 1 - progress
+
+  const drawSplash = useCallback(
+    (g: Graphics) => {
+      g.clear()
+
+      // Ripple ring — expanding ellipse that fades
+      const rippleRadius = 20 + progress * 60
+      const rippleRY = rippleRadius * 0.5
+      g.ellipse(0, 0, rippleRadius, rippleRY).stroke({
+        color: 0x87cefa,
+        width: 2 - progress * 1.5,
+        alpha: alpha * 0.7,
+      })
+
+      // Second ripple (delayed)
+      if (progress > 0.15) {
+        const p2 = (progress - 0.15) / 0.85
+        const r2 = 10 + p2 * 45
+        g.ellipse(0, 0, r2, r2 * 0.5).stroke({
+          color: 0xadd8e6,
+          width: 1.5 - p2 * 1.2,
+          alpha: (1 - p2) * 0.5,
+        })
+      }
+
+      // Splash droplets — small blue circles that fly upward then fall with gravity
+      const droplets = [
+        { dx: 0, vy: -3.5, vx: 0 },
+        { dx: -8, vy: -3.0, vx: -1.2 },
+        { dx: 8, vy: -3.0, vx: 1.2 },
+        { dx: -15, vy: -2.2, vx: -1.8 },
+        { dx: 15, vy: -2.2, vx: 1.8 },
+        { dx: -4, vy: -2.8, vx: -0.5 },
+        { dx: 4, vy: -2.8, vx: 0.5 },
+        { dx: -12, vy: -1.5, vx: -2.0 },
+        { dx: 12, vy: -1.5, vx: 2.0 },
+      ]
+      const gravity = 0.12
+      const t = effect.age
+      for (const d of droplets) {
+        const dropX = d.dx + d.vx * t
+        const dropY = d.vy * t + 0.5 * gravity * t * t
+        if (dropY > 5) continue // fallen back into water
+        const dropAlpha = alpha * 0.9
+        const size = 2.5 - progress * 1.5
+        if (size > 0.5) {
+          g.circle(dropX, dropY, size).fill({ color: 0x5ba0e8, alpha: dropAlpha })
+        }
+      }
+    },
+    [effect.age, progress, alpha],
+  )
+
+  return (
+    <pixiContainer x={effect.x} y={effect.y} alpha={alpha}>
+      <pixiGraphics draw={drawSplash} />
+    </pixiContainer>
+  )
+}
+
 function EffectRenderer({ effect }: { effect: ClickEffect }) {
   switch (effect.type) {
     case 'heart':
@@ -118,6 +182,8 @@ function EffectRenderer({ effect }: { effect: ClickEffect }) {
       return <CloudEffect effect={effect} />
     case 'butterfly':
       return <ButterflyEffect effect={effect} />
+    case 'splash':
+      return <SplashEffect effect={effect} />
   }
 }
 
