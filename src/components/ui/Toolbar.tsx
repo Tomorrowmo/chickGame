@@ -231,7 +231,22 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
               <span style={{ fontSize: 18 }}>🐣</span>
               <span style={{ fontSize: 12 }}>Hide & Seek</span>
             </button>
-            {/* Future games go here */}
+            <button
+              onClick={() => {
+                startGame('race')
+                setShowGameMenu(false)
+              }}
+              style={{
+                ...btnBase,
+                background: '#ffe082',
+                width: '100%',
+                minWidth: 120,
+                marginTop: 4,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>🏁</span>
+              <span style={{ fontSize: 12 }}>Chick Race</span>
+            </button>
           </div>
         )}
       </div>

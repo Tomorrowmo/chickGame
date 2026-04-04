@@ -12,6 +12,7 @@ import { ClickEffects } from './ClickEffects'
 import { HatchEffect } from './HatchEffect'
 import { FoodParticles } from './FoodParticles'
 import { HideAndSeekGame, HideAndSeekPixi } from '../games/HideAndSeek'
+import { ChickRaceGame, ChickRacePixi, ChickRaceOverlay } from '../games/ChickRace'
 import { GameOverlay } from '../games/GameOverlay'
 import { useGameStore } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
@@ -165,6 +166,8 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
 
   // Hide-and-seek game state (hook is always called, but only active when currentGame === 'hideAndSeek')
   const hideAndSeek = HideAndSeekGame()
+  // Chick race game state (hook is always called, but only active when currentGame === 'race')
+  const chickRace = ChickRaceGame()
 
   const [hatchEffects, setHatchEffects] = useState<ActiveHatchEffect[]>([])
 
@@ -286,6 +289,17 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
               onClickChick={hideAndSeek.handleClickChick}
             />
           )}
+          {currentGame === 'race' && (
+            <>
+              <chickRace.RaceUpdater />
+              <ChickRacePixi
+                raceChicks={chickRace.raceChicks}
+                raceState={chickRace.raceState}
+                countdown={chickRace.countdown}
+                onClickTrack={chickRace.handleClickTrack}
+              />
+            </>
+          )}
         </pixiContainer>
       </Application>
       {currentGame === 'hideAndSeek' && (
@@ -299,6 +313,21 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           onStart={hideAndSeek.handleStart}
           onPlayAgain={hideAndSeek.handlePlayAgain}
           onExit={hideAndSeek.handleExit}
+        />
+      )}
+      {currentGame === 'race' && (
+        <ChickRaceOverlay
+          phase={chickRace.phase}
+          raceState={chickRace.raceState}
+          selectedLane={chickRace.selectedLane}
+          countdown={chickRace.countdown}
+          playerPlace={chickRace.playerPlace}
+          coinsEarned={chickRace.coinsEarned}
+          onStart={chickRace.handleStart}
+          onSelectLane={chickRace.handleSelectLane}
+          onConfirmSelection={chickRace.handleConfirmSelection}
+          onPlayAgain={chickRace.handlePlayAgain}
+          onExit={chickRace.handleExit}
         />
       )}
     </div>
