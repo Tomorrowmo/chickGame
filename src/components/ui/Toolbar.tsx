@@ -45,6 +45,9 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
 
   const shopOpen = useGameStore((s) => s.shopOpen)
   const setShopOpen = useGameStore((s) => s.setShopOpen)
+  const cleaningMode = useGameStore((s) => s.cleaningMode)
+  const setCleaningMode = useGameStore((s) => s.setCleaningMode)
+  const dirtSpots = useGameStore((s) => s.dirtSpots)
 
   const [showGameMenu, setShowGameMenu] = useState(false)
 
@@ -54,17 +57,18 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
   ).length
   const canPlay = playableChicks >= 3 && !currentGame
 
-  // Escape key exits feeding mode and closes game menu
+  // Escape key exits feeding mode, cleaning mode, and closes game menu
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (feedingMode) setFeedingMode(false)
+        if (cleaningMode) setCleaningMode(false)
         if (showGameMenu) setShowGameMenu(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [feedingMode, setFeedingMode, showGameMenu])
+  }, [feedingMode, setFeedingMode, cleaningMode, setCleaningMode, showGameMenu])
 
   const handleFoodClick = useCallback(
     (type: FoodType) => {
@@ -217,19 +221,23 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
         <span style={{ fontSize: 11 }}>成就</span>
       </button>
 
-      {/* Clean button (placeholder) */}
+      {/* Clean button */}
       <button
-        onClick={() => {}}
-        disabled
+        onClick={() => setCleaningMode(!cleaningMode)}
         style={{
           ...btnBase,
-          background: '#e8e8e8',
-          color: '#bdbdbd',
-          cursor: 'not-allowed',
+          background: cleaningMode ? '#ffe082' : '#fff8e1',
+          border: cleaningMode ? '2px solid #f5c542' : '2px solid transparent',
+          fontWeight: cleaningMode ? 'bold' : 'normal',
+          boxShadow: cleaningMode
+            ? '0 2px 10px rgba(245, 197, 66, 0.4)'
+            : '0 2px 6px rgba(0,0,0,0.12)',
         }}
       >
         <span style={{ fontSize: 22 }}>🧹</span>
-        <span style={{ fontSize: 11 }}>清洁</span>
+        <span style={{ fontSize: 11 }}>
+          清洁{dirtSpots.length > 0 ? ` (${dirtSpots.length})` : ''}
+        </span>
       </button>
 
       {/* Play button */}
@@ -340,6 +348,27 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
           }}
         >
           点击草地喂食 (Esc取消)
+        </div>
+      )}
+      {/* Cleaning mode hint */}
+      {cleaningMode && (
+        <div
+          style={{
+            position: 'absolute',
+            top: -28,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontSize: 12,
+            color: '#795548',
+            fontStyle: 'italic',
+            fontFamily,
+            background: 'rgba(255, 248, 225, 0.9)',
+            padding: '2px 12px',
+            borderRadius: 8,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          点击污渍清洁 (Esc取消)
         </div>
       )}
     </div>

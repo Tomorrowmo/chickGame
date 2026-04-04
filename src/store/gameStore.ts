@@ -49,6 +49,12 @@ export interface PlacedDecoration {
   y: number
 }
 
+export interface DirtSpot {
+  id: string
+  x: number
+  y: number
+}
+
 import type { Rarity } from '../types/chick'
 
 export const EGG_COIN_REWARD: Record<Rarity, number> = {
@@ -82,6 +88,9 @@ interface GameState {
   currentGame: MiniGameType | null
   eggLayEvents: EggLayEvent[]
   decorations: PlacedDecoration[]
+  dirtSpots: DirtSpot[]
+  cleaningMode: boolean
+  dirtSpawnTimer: number
   shopOpen: boolean
   achievementStats: AchievementStats
   unlockedAchievements: string[]
@@ -119,6 +128,8 @@ interface GameState {
   recordGamePlayed: (gameType: string) => void
   clearAchievementToast: () => void
   setAchievementPanelOpen: (open: boolean) => void
+  setCleaningMode: (mode: boolean) => void
+  cleanDirtSpot: (id: string) => void
 }
 
 const savedState = loadGame()
@@ -134,6 +145,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   currentGame: null,
   eggLayEvents: [],
   decorations: savedState?.decorations ?? [],
+  dirtSpots: [],
+  cleaningMode: false,
+  dirtSpawnTimer: 0,
   shopOpen: false,
   showSaveIndicator: false,
   achievementStats: savedState?.achievementStats ?? { ...DEFAULT_ACHIEVEMENT_STATS },
@@ -255,7 +269,30 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { ...chick, hunger, moodValue, growthProgress, stage, mood, eggTimer, eggsLaid }
     })
 
-    const updates: Partial<GameState> = { chicks: updated, gameTime: newGameTime }
+    // Dirt spot spawning: every ~3600 ticks (~60 seconds at 60fps), max 5
+    const DIRT_SPAWN_INTERVAL = 3600
+    const MAX_DIRT_SPOTS = 5
+    let newDirtSpots = state.dirtSpots
+    let newDirtTimer = state.dirtSpawnTimer + delta
+    if (newDirtTimer >= DIRT_SPAWN_INTERVAL && state.dirtSpots.length < MAX_DIRT_SPOTS) {
+      newDirtTimer = 0
+      const margin = 80
+      const grassTop = 400
+      const grassBottom = 580
+      const dx = margin + Math.random() * (860 - margin)
+      const dy = grassTop + Math.random() * (grassBottom - grassTop)
+      newDirtSpots = [
+        ...state.dirtSpots,
+        { id: `dirt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, x: dx, y: dy },
+      ]
+    }
+
+    const updates: Partial<GameState> = {
+      chicks: updated,
+      gameTime: newGameTime,
+      dirtSpots: newDirtSpots,
+      dirtSpawnTimer: newDirtTimer,
+    }
     if (coinGain > 0) {
       updates.coins = state.coins + coinGain
     }
@@ -452,6 +489,34 @@ export const useGameStore = create<GameState>((set, get) => ({
   clearAchievementToast: () => set({ pendingAchievementToast: null }),
 
   setAchievementPanelOpen: (open) => set({ achievementPanelOpen: open }),
+
+  setCleaningMode: (mode) => set({ cleaningMode: mode, feedingMode: false, selectedFood: null }),
+
+  cleanDirtSpot: (id) => {
+    const state = get()
+    const spot = state.dirtSpots.find((d) => d.id === id)
+    if (!spot) return
+    const remaining = state.dirtSpots.filter((d) => d.id !== id)
+    const coinReward = 3
+    let moodBoost = 0
+    // If this was the last dirt spot, boost all chick mood
+    if (remaining.length === 0) {
+      moodBoost = 10
+    }
+    set({
+      dirtSpots: remaining,
+      coins: state.coins + coinReward,
+      ...(moodBoost > 0
+        ? {
+            chicks: state.chicks.map((c) =>
+              c.stage !== 'egg' && c.stage !== 'hatching'
+                ? { ...c, moodValue: Math.min(100, c.moodValue + moodBoost) }
+                : c,
+            ),
+          }
+        : {}),
+    })
+  },
 
   buyPremiumFood: (foodType, price) => {
     const state = get()

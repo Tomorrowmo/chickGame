@@ -13,6 +13,8 @@ import { Chick } from './Chick'
 import { ClickEffects } from './ClickEffects'
 import { HatchEffect } from './HatchEffect'
 import { FoodParticles } from './FoodParticles'
+import { SwipeTrail } from './SwipeTrail'
+import { DirtSpots } from './DirtSpots'
 import { HideAndSeekGame, HideAndSeekPixi } from '../games/HideAndSeek'
 import { ChickRaceGame, ChickRacePixi, ChickRaceOverlay } from '../games/ChickRace'
 import { FetchGame, FetchPixi, FetchInputLayer, FetchOverlay } from '../games/Fetch'
@@ -83,7 +85,7 @@ function GameLoop() {
     tick(delta)
 
     // Read cursor state for attraction logic
-    const { cursorX, cursorY, cursorOnGrass } = useClickEffectsStore.getState()
+    const { cursorX, cursorY, cursorOnGrass, swipeActive, swipeTargetX, swipeTargetY } = useClickEffectsStore.getState()
 
     // Get food particles for chick-food interaction
     const { foodParticles, removeFoodParticle, feedChickWithFood } =
@@ -146,6 +148,25 @@ function GameLoop() {
       }
 
       if (chasingFood) continue
+
+      // Swipe chase: chicks get excited and chase toward swipe target
+      if (swipeActive) {
+        const dx = swipeTargetX - chick.x
+        const dy = swipeTargetY - chick.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < 300 && dist > 10) {
+          const speed = 1.8 * delta
+          updateChick(chick.id, {
+            x: chick.x + (dx / dist) * speed,
+            y: chick.y + (dy / dist) * speed,
+            currentAction: 'chasing',
+            targetX: swipeTargetX,
+            targetY: swipeTargetY,
+            direction: dx > 0 ? 'right' : 'left',
+          })
+          continue // skip normal AI for this chick
+        }
+      }
 
       // Cursor-following: if cursor is on grass and chick is close, override target
       if (cursorOnGrass) {
@@ -249,9 +270,12 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   const selectedFood = useGameStore((s) => s.selectedFood)
   const scatterFood = useGameStore((s) => s.scatterFood)
   const currentGame = useGameStore((s) => s.currentGame)
+  const cleaningMode = useGameStore((s) => s.cleaningMode)
   const addEffect = useClickEffectsStore((s) => s.addEffect)
   const setCursor = useClickEffectsStore((s) => s.setCursor)
   const triggerPondSplash = useClickEffectsStore((s) => s.triggerPondSplash)
+  const addSwipeTrail = useClickEffectsStore((s) => s.addSwipeTrail)
+  const setSwipeTarget = useClickEffectsStore((s) => s.setSwipeTarget)
 
   // Hide-and-seek game state (hook is always called, but only active when currentGame === 'hideAndSeek')
   const hideAndSeek = HideAndSeekGame()
@@ -264,6 +288,9 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   const [heldChickId, setHeldChickId] = useState<string | null>(null)
   const cursorPosRef = useRef({ x: 0, y: 0 })
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 })
+
+  // Swipe detection state
+  const prevPointerRef = useRef({ x: 0, y: 0 })
 
   const [hatchEffects, setHatchEffects] = useState<ActiveHatchEffect[]>([])
 
@@ -433,17 +460,33 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
     [addEffect, grassY, feedingMode, selectedFood, scatterFood, heldChickId, triggerPondSplash, updateChick],
   )
 
-  /** Track cursor position for chick attraction and held chick */
+  /** Track cursor position for chick attraction, held chick, and swipe detection */
+  const SWIPE_VELOCITY_THRESHOLD = 8
   const handlePointerMove = useCallback(
     (e: FederatedPointerEvent) => {
       const pos = e.global
-      setCursor(pos.x, pos.y, pos.y > grassY)
-      cursorPosRef.current = { x: pos.x, y: pos.y }
+      const x = pos.x
+      const y = pos.y
+      setCursor(x, y, y > grassY)
+      cursorPosRef.current = { x, y }
       if (heldChickId) {
-        setCursorPos({ x: pos.x, y: pos.y })
+        setCursorPos({ x, y })
+      }
+
+      // Swipe detection: compute distance from previous pointer position
+      const prev = prevPointerRef.current
+      const dx = x - prev.x
+      const dy = y - prev.y
+      const velocity = Math.sqrt(dx * dx + dy * dy)
+      prevPointerRef.current = { x, y }
+
+      if (velocity > SWIPE_VELOCITY_THRESHOLD && y > grassY) {
+        // It's a swipe on grass - spawn trail particles and set swipe target
+        addSwipeTrail(x, y)
+        setSwipeTarget(x, y)
       }
     },
-    [setCursor, grassY, heldChickId],
+    [setCursor, grassY, heldChickId, addSwipeTrail, setSwipeTarget],
   )
 
   return (
@@ -452,7 +495,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
         position: 'relative',
         width,
         height,
-        cursor: feedingMode ? 'crosshair' : 'default',
+        cursor: cleaningMode ? 'crosshair' : feedingMode ? 'crosshair' : 'default',
       }}
     >
       <div style={{
@@ -485,6 +528,8 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           <Decorations />
           <ClickEffects />
           <FoodParticles />
+          <SwipeTrail />
+          <DirtSpots />
           {chicks.map((chick) => (
             <Chick
               key={chick.id}
