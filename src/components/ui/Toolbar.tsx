@@ -43,6 +43,9 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
   const setFeedingMode = useGameStore((s) => s.setFeedingMode)
   const startGame = useGameStore((s) => s.startGame)
 
+  const shopOpen = useGameStore((s) => s.shopOpen)
+  const setShopOpen = useGameStore((s) => s.setShopOpen)
+
   const [showGameMenu, setShowGameMenu] = useState(false)
 
   // Count non-egg chicks
@@ -184,6 +187,23 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
           margin: '0 4px',
         }}
       />
+
+      {/* Shop button */}
+      <button
+        onClick={() => setShopOpen(!shopOpen)}
+        style={{
+          ...btnBase,
+          background: shopOpen ? '#ffe082' : '#fff8e1',
+          border: shopOpen ? '2px solid #f5c542' : '2px solid transparent',
+          fontWeight: shopOpen ? 'bold' : 'normal',
+          boxShadow: shopOpen
+            ? '0 2px 10px rgba(245, 197, 66, 0.4)'
+            : '0 2px 6px rgba(0,0,0,0.12)',
+        }}
+      >
+        <span style={{ fontSize: 22 }}>🛒</span>
+        <span style={{ fontSize: 11 }}>商店</span>
+      </button>
 
       {/* Clean button (placeholder) */}
       <button

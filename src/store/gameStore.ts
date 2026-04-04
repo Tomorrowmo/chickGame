@@ -1,9 +1,10 @@
 import { create } from 'zustand'
 import type { ChickData } from '../types/chick'
-import { createEgg } from './chickFactory'
+import { createEgg, createSpecialEgg, createRareEgg, createMysteryEgg } from './chickFactory'
 import { loadGame, saveGame as persistSave, startAutoSave } from '../systems/persistence'
+import type { DecorationType } from './shopData'
 
-export type FoodType = 'grain' | 'worm' | 'treat'
+export type FoodType = 'grain' | 'worm' | 'treat' | 'rainbow_grain' | 'cake'
 
 export interface FoodParticle {
   id: string
@@ -18,18 +19,31 @@ export const FOOD_COSTS: Record<FoodType, number> = {
   grain: 5,
   worm: 10,
   treat: 20,
+  rainbow_grain: 40,
+  cake: 30,
 }
 
 export const FOOD_EFFECTS: Record<FoodType, { hunger: number; growth: number; mood: number }> = {
   grain: { hunger: 20, growth: 5, mood: 0 },
   worm: { hunger: 30, growth: 10, mood: 0 },
   treat: { hunger: 15, growth: 5, mood: 20 },
+  rainbow_grain: { hunger: 50, growth: 20, mood: 30 },
+  cake: { hunger: 10, growth: 0, mood: 50 },
 }
 
 export const FOOD_COLORS: Record<FoodType, number> = {
   grain: 0xdaa520,  // golden
   worm: 0x8b4513,   // brown
   treat: 0xff69b4,  // pink
+  rainbow_grain: 0xff6eb4,  // rainbow pink
+  cake: 0xffdab9,   // peach
+}
+
+export interface PlacedDecoration {
+  id: string
+  type: DecorationType
+  x: number
+  y: number
 }
 
 import type { Rarity } from '../types/chick'
@@ -63,6 +77,8 @@ interface GameState {
   foodParticles: FoodParticle[]
   currentGame: MiniGameType | null
   eggLayEvents: EggLayEvent[]
+  decorations: PlacedDecoration[]
+  shopOpen: boolean
 
   // Actions
   addEgg: (x: number, y: number) => void
@@ -84,6 +100,12 @@ interface GameState {
   clearEggLayEvents: () => void
   saveGame: () => void
   showSaveIndicator: boolean
+  setShopOpen: (open: boolean) => void
+  buySpecialEgg: (x: number, y: number) => boolean
+  buyRareEgg: (x: number, y: number) => boolean
+  buyMysteryEgg: (x: number, y: number) => boolean
+  buyDecoration: (type: DecorationType, price: number) => boolean
+  buyPremiumFood: (foodType: FoodType, price: number) => boolean
 }
 
 const savedState = loadGame()
@@ -97,6 +119,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   foodParticles: [],
   currentGame: null,
   eggLayEvents: [],
+  decorations: savedState?.decorations ?? [],
+  shopOpen: false,
   showSaveIndicator: false,
 
   addEgg: (x, y) =>
@@ -278,18 +302,91 @@ export const useGameStore = create<GameState>((set, get) => ({
   clearEggLayEvents: () => set({ eggLayEvents: [] }),
 
   saveGame: () => {
-    const { chicks, coins, selectedChickId } = get()
-    persistSave({ chicks, coins, selectedChickId })
+    const { chicks, coins, selectedChickId, decorations } = get()
+    persistSave({ chicks, coins, selectedChickId, decorations })
     set({ showSaveIndicator: true })
     setTimeout(() => useGameStore.setState({ showSaveIndicator: false }), 1500)
+  },
+
+  setShopOpen: (open) => set({ shopOpen: open }),
+
+  buySpecialEgg: (x, y) => {
+    const state = get()
+    if (state.coins < 50) return false
+    set({
+      coins: state.coins - 50,
+      chicks: [...state.chicks, createSpecialEgg(x, y)],
+    })
+    return true
+  },
+
+  buyRareEgg: (x, y) => {
+    const state = get()
+    if (state.coins < 150) return false
+    set({
+      coins: state.coins - 150,
+      chicks: [...state.chicks, createRareEgg(x, y)],
+    })
+    return true
+  },
+
+  buyMysteryEgg: (x, y) => {
+    const state = get()
+    if (state.coins < 80) return false
+    set({
+      coins: state.coins - 80,
+      chicks: [...state.chicks, createMysteryEgg(x, y)],
+    })
+    return true
+  },
+
+  buyDecoration: (type, price) => {
+    const state = get()
+    if (state.coins < price) return false
+    const decoration: PlacedDecoration = {
+      id: `deco-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type,
+      x: 60 + Math.random() * 840, // within game area
+      y: 400 + Math.random() * 180, // on the grass
+    }
+    set({
+      coins: state.coins - price,
+      decorations: [...state.decorations, decoration],
+    })
+    return true
+  },
+
+  buyPremiumFood: (foodType, price) => {
+    const state = get()
+    if (state.coins < price) return false
+    // Scatter food in center of garden
+    const cx = 400 + Math.random() * 200
+    const cy = 420 + Math.random() * 100
+    const count = 5 + Math.floor(Math.random() * 4)
+    const particles: FoodParticle[] = []
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        id: `food-${nextFoodId++}`,
+        type: foodType,
+        x: cx + (Math.random() - 0.5) * 60,
+        y: cy + (Math.random() - 0.5) * 40,
+        scale: 1,
+        eaten: false,
+      })
+    }
+    set({
+      coins: state.coins - price,
+      foodParticles: [...state.foodParticles, ...particles],
+    })
+    return true
   },
 }))
 
 // Start auto-save
 startAutoSave(
   () => {
-    const { chicks, coins, selectedChickId } = useGameStore.getState()
-    return { chicks, coins, selectedChickId }
+    const { chicks, coins, selectedChickId, decorations } = useGameStore.getState()
+    return { chicks, coins, selectedChickId, decorations }
   },
   () => {
     useGameStore.setState({ showSaveIndicator: true })
@@ -300,7 +397,7 @@ startAutoSave(
 // Save on page unload
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
-    const { chicks, coins, selectedChickId } = useGameStore.getState()
-    persistSave({ chicks, coins, selectedChickId })
+    const { chicks, coins, selectedChickId, decorations } = useGameStore.getState()
+    persistSave({ chicks, coins, selectedChickId, decorations })
   })
 }

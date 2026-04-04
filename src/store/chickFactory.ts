@@ -13,8 +13,7 @@ function rollRarity(): Rarity {
   return 'common' // 75%
 }
 
-export function createEgg(x: number, y: number): ChickData {
-  const rarity = rollRarity()
+function createEggWithRarity(x: number, y: number, rarity: Rarity): ChickData {
   const breeds = BREEDS[rarity]
   const breed = breeds[Math.floor(Math.random() * breeds.length)]
 
@@ -38,4 +37,26 @@ export function createEgg(x: number, y: number): ChickData {
     eggTimer: 3000,
     eggsLaid: 0,
   }
+}
+
+export function createEgg(x: number, y: number): ChickData {
+  return createEggWithRarity(x, y, rollRarity())
+}
+
+export function createSpecialEgg(x: number, y: number): ChickData {
+  return createEggWithRarity(x, y, 'special')
+}
+
+export function createRareEgg(x: number, y: number): ChickData {
+  return createEggWithRarity(x, y, 'rare')
+}
+
+export function createMysteryEgg(x: number, y: number): ChickData {
+  // 50% common, 35% special, 15% rare
+  const roll = Math.random()
+  let rarity: Rarity
+  if (roll < 0.15) rarity = 'rare'
+  else if (roll < 0.50) rarity = 'special'
+  else rarity = 'common'
+  return createEggWithRarity(x, y, rarity)
 }

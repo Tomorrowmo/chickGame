@@ -3,6 +3,7 @@ import { GameCanvas, randomGrassX, randomGrassY } from './components/GameCanvas'
 import { TopBar } from './components/ui/TopBar'
 import { ChickInfoPanel } from './components/ui/ChickInfoPanel'
 import { Toolbar } from './components/ui/Toolbar'
+import { Shop } from './components/ui/Shop'
 import { Tutorial } from './components/ui/Tutorial'
 import { useGameStore } from './store/gameStore'
 import './App.css'
@@ -78,6 +79,7 @@ function App() {
           <GameCanvas width={GAME_WIDTH} height={GAME_HEIGHT} />
           <TopBar />
           <ChickInfoPanel />
+          <Shop />
         </div>
         <Toolbar onAddEgg={handleAddEgg} />
       </div>

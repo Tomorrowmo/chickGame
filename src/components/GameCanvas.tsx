@@ -15,7 +15,7 @@ import { HideAndSeekGame, HideAndSeekPixi } from '../games/HideAndSeek'
 import { ChickRaceGame, ChickRacePixi, ChickRaceOverlay } from '../games/ChickRace'
 import { FetchGame, FetchPixi, FetchInputLayer, FetchOverlay } from '../games/Fetch'
 import { GameOverlay } from '../games/GameOverlay'
-import { useGameStore } from '../store/gameStore'
+import { useGameStore, type PlacedDecoration } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
 import { updateChickAI } from '../systems/chickAI'
 import { chirp, feed } from '../systems/audio'
@@ -146,6 +146,66 @@ function GameLoop() {
   })
 
   return null
+}
+
+function drawDecoration(g: import('pixi.js').Graphics, deco: PlacedDecoration) {
+  g.clear()
+  switch (deco.type) {
+    case 'sunflower':
+      // Stem
+      g.rect(-2, -20, 4, 20).fill(0x228b22)
+      // Petals
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2
+        const px = Math.cos(angle) * 10
+        const py = -20 + Math.sin(angle) * 10
+        g.circle(px, py, 5).fill(0xffd700)
+      }
+      // Center
+      g.circle(0, -20, 5).fill(0x8b4513)
+      break
+    case 'mushroom':
+      // Stem
+      g.rect(-4, -8, 8, 12).fill(0xfaebd7)
+      // Cap
+      g.circle(0, -8, 10).fill(0xff6347)
+      // Dots
+      g.circle(-4, -10, 2).fill(0xffffff)
+      g.circle(4, -10, 2).fill(0xffffff)
+      g.circle(0, -14, 2).fill(0xffffff)
+      break
+    case 'rock':
+      // Simple rock shape using overlapping ellipses
+      g.ellipse(0, 0, 12, 8).fill(0x808080)
+      g.ellipse(-3, -2, 8, 6).fill(0x999999)
+      break
+    case 'birdhouse':
+      // Post
+      g.rect(-2, -5, 4, 25).fill(0x8b4513)
+      // House body
+      g.rect(-12, -20, 24, 18).fill(0xdeb887)
+      // Roof
+      g.poly([-15, -20, 0, -30, 15, -20]).fill(0xa0522d)
+      // Door hole
+      g.circle(0, -13, 4).fill(0x3e2723)
+      break
+  }
+}
+
+function Decorations() {
+  const decorations = useGameStore((s) => s.decorations)
+  return (
+    <>
+      {decorations.map((deco) => (
+        <pixiGraphics
+          key={deco.id}
+          x={deco.x}
+          y={deco.y}
+          draw={(g: import('pixi.js').Graphics) => drawDecoration(g, deco)}
+        />
+      ))}
+    </>
+  )
 }
 
 interface ActiveHatchEffect {
@@ -280,6 +340,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           <Fence width={width} />
           <Flowers />
           <Bushes />
+          <Decorations />
           <ClickEffects />
           <FoodParticles />
           {chicks.map((chick) => (
