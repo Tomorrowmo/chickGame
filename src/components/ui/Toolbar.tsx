@@ -247,6 +247,22 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
               <span style={{ fontSize: 18 }}>🏁</span>
               <span style={{ fontSize: 12 }}>Chick Race</span>
             </button>
+            <button
+              onClick={() => {
+                startGame('fetch')
+                setShowGameMenu(false)
+              }}
+              style={{
+                ...btnBase,
+                background: '#ffe082',
+                width: '100%',
+                minWidth: 120,
+                marginTop: 4,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>🎾</span>
+              <span style={{ fontSize: 12 }}>Fetch</span>
+            </button>
           </div>
         )}
       </div>

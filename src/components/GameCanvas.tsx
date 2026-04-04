@@ -13,6 +13,7 @@ import { HatchEffect } from './HatchEffect'
 import { FoodParticles } from './FoodParticles'
 import { HideAndSeekGame, HideAndSeekPixi } from '../games/HideAndSeek'
 import { ChickRaceGame, ChickRacePixi, ChickRaceOverlay } from '../games/ChickRace'
+import { FetchGame, FetchPixi, FetchInputLayer, FetchOverlay } from '../games/Fetch'
 import { GameOverlay } from '../games/GameOverlay'
 import { useGameStore } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
@@ -168,6 +169,8 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   const hideAndSeek = HideAndSeekGame()
   // Chick race game state (hook is always called, but only active when currentGame === 'race')
   const chickRace = ChickRaceGame()
+  // Fetch game state (hook is always called, but only active when currentGame === 'fetch')
+  const fetchGame = FetchGame()
 
   const [hatchEffects, setHatchEffects] = useState<ActiveHatchEffect[]>([])
 
@@ -300,6 +303,32 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
               />
             </>
           )}
+          {currentGame === 'fetch' && (
+            <>
+              <fetchGame.FetchUpdater
+                fetchState={fetchGame.fetchState}
+                setFetchState={fetchGame.handleFetchStateChange}
+                ball={fetchGame.ball}
+                setBall={fetchGame.setBall}
+                chick={fetchGame.chick}
+                setChick={fetchGame.setChick}
+              />
+              <FetchPixi
+                fetchState={fetchGame.fetchState}
+                ball={fetchGame.ball}
+                chick={fetchGame.chick}
+                round={fetchGame.round}
+                dragStart={fetchGame.dragStart}
+                dragEnd={fetchGame.dragEnd}
+                isDragging={fetchGame.isDragging}
+              />
+              <FetchInputLayer
+                onDragStart={fetchGame.handleDragStart}
+                onDragMove={fetchGame.handleDragMove}
+                onDragEnd={fetchGame.handleDragEnd}
+              />
+            </>
+          )}
         </pixiContainer>
       </Application>
       {currentGame === 'hideAndSeek' && (
@@ -328,6 +357,20 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           onConfirmSelection={chickRace.handleConfirmSelection}
           onPlayAgain={chickRace.handlePlayAgain}
           onExit={chickRace.handleExit}
+        />
+      )}
+      {currentGame === 'fetch' && (
+        <FetchOverlay
+          phase={fetchGame.phase}
+          fetchState={fetchGame.fetchState}
+          round={fetchGame.round}
+          totalScore={fetchGame.totalScore}
+          streak={fetchGame.streak}
+          roundScore={fetchGame.roundScore}
+          coinsEarned={fetchGame.coinsEarned}
+          onStart={fetchGame.handleStart}
+          onPlayAgain={fetchGame.handlePlayAgain}
+          onExit={fetchGame.handleExit}
         />
       )}
     </div>
