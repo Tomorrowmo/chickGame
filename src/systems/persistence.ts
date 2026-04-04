@@ -4,7 +4,7 @@ import type { AchievementStats } from '../store/achievementData'
 import { DEFAULT_ACHIEVEMENT_STATS } from '../store/achievementData'
 
 const SAVE_KEY = 'linda-game-save'
-const SAVE_VERSION = 5
+const SAVE_VERSION = 6
 const AUTO_SAVE_INTERVAL = 30_000 // 30 seconds
 
 interface SaveData {
@@ -99,6 +99,16 @@ export function loadGame(): PersistentState | null {
         data.achievementStats.gamesPlayed = []
       }
       data.version = 5
+    }
+
+    // Migrate from v5: add inCoop and coopType to chicks
+    if (data.version < 6) {
+      data.chicks = data.chicks.map((c: ChickData) => ({
+        ...c,
+        inCoop: (c as Record<string, unknown>).inCoop ?? (c.stage !== 'egg' && c.stage !== 'hatching'),
+        coopType: (c as Record<string, unknown>).coopType ?? (c.stage !== 'egg' && c.stage !== 'hatching' ? c.rarity : null),
+      }))
+      data.version = 6
     }
 
     return {

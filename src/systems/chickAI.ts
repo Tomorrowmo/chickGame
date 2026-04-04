@@ -1,5 +1,10 @@
 import type { ChickData } from '../types/chick'
-import { COOP_POSITION } from '../components/scene/Coop'
+import { COOP_POSITIONS, type CoopInfo } from '../components/scene/Coop'
+
+/** Get the correct coop for a chick based on rarity */
+function getCoopForChick(chick: ChickData): CoopInfo {
+  return COOP_POSITIONS.find((c) => c.type === chick.rarity) ?? COOP_POSITIONS[0]
+}
 
 const GROUND_Y_MIN = 560 // grass area top (60% of 900)
 const GROUND_Y_MAX = 870
@@ -73,13 +78,14 @@ export function updateChickAI(
     }
   }
 
-  // === Night behavior: walk to coop and sleep ===
+  // === Night behavior: walk to the correct coop based on rarity and sleep ===
   if (night) {
-    const distToCoop = distBetween(chick, COOP_POSITION)
+    const targetCoop = getCoopForChick(chick)
+    const distToCoop = distBetween(chick, targetCoop)
     if (distToCoop > 20) {
-      // Walk toward the coop
-      const dx = COOP_POSITION.x - chick.x
-      const dy = COOP_POSITION.y - chick.y
+      // Walk toward the assigned coop
+      const dx = targetCoop.x - chick.x
+      const dy = targetCoop.y - chick.y
       const dist = distToCoop
       const speed = 0.6 * delta
       updates.x = chick.x + (dx / dist) * speed

@@ -2,6 +2,8 @@ export type LifeStage = 'egg' | 'hatching' | 'baby' | 'juvenile' | 'adult'
 export type Rarity = 'common' | 'special' | 'rare'
 export type Mood = 'happy' | 'normal' | 'bored' | 'angry'
 
+export type CoopType = 'common' | 'special' | 'rare'
+
 export interface ChickData {
   id: string
   name: string
@@ -27,4 +29,6 @@ export interface ChickData {
   birthTime: number
   eggTimer: number // countdown frames until next egg (adult only)
   eggsLaid: number // total eggs laid by this chick
+  inCoop: boolean // whether egg is placed in a coop (only eggs hatch when inCoop)
+  coopType: CoopType | null // which coop the egg is in
 }

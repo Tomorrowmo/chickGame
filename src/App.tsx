@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { GameCanvas, randomGrassX, randomGrassY } from './components/GameCanvas'
+import { useEffect, useState } from 'react'
+import { GameCanvas } from './components/GameCanvas'
 import { TopBar } from './components/ui/TopBar'
 import { ChickInfoPanel } from './components/ui/ChickInfoPanel'
 import { Toolbar } from './components/ui/Toolbar'
@@ -18,10 +18,8 @@ function useResponsiveScale() {
 
   useEffect(() => {
     function updateScale() {
-      const maxW = window.innerWidth
-      const maxH = window.innerHeight
-      const totalHeight = GAME_HEIGHT + TOOLBAR_HEIGHT
-      const s = Math.min(maxW / GAME_WIDTH, maxH / totalHeight)
+      const totalH = GAME_HEIGHT + TOOLBAR_HEIGHT
+      const s = Math.min(window.innerWidth / GAME_WIDTH, window.innerHeight / totalH)
       setScale(s)
     }
     updateScale()
@@ -33,7 +31,6 @@ function useResponsiveScale() {
 }
 
 function App() {
-  const addEgg = useGameStore((s) => s.addEgg)
   const [loading, setLoading] = useState(true)
   const scale = useResponsiveScale()
 
@@ -41,10 +38,6 @@ function App() {
     const timer = setTimeout(() => setLoading(false), 1200)
     return () => clearTimeout(timer)
   }, [])
-
-  const handleAddEgg = useCallback(() => {
-    addEgg(randomGrassX(GAME_WIDTH), randomGrassY(GAME_HEIGHT))
-  }, [addEgg])
 
   if (loading) {
     return (
@@ -62,37 +55,24 @@ function App() {
     <div className="app-container">
       <Tutorial />
       <AchievementToast />
-      <div
-        className="game-outer"
-        style={{
-          width: GAME_WIDTH * scale,
-          height: (GAME_HEIGHT + TOOLBAR_HEIGHT) * scale,
-        }}
-      >
+      <div style={{
+        transform: `scale(${scale})`,
+        transformOrigin: 'center center',
+        width: GAME_WIDTH,
+        height: GAME_HEIGHT + TOOLBAR_HEIGHT,
+        flexShrink: 0,
+      }}>
         <div
-          className="game-scaler"
-          style={{
-            transform: `scale(${scale})`,
-            transformOrigin: 'top left',
-            width: GAME_WIDTH,
-            height: GAME_HEIGHT + TOOLBAR_HEIGHT,
-          }}
+          className="game-wrapper"
+          style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
         >
-          <div
-            className="game-wrapper"
-            style={{
-              width: GAME_WIDTH,
-              height: GAME_HEIGHT,
-            }}
-          >
-            <GameCanvas width={GAME_WIDTH} height={GAME_HEIGHT} />
-            <TopBar />
-            <ChickInfoPanel />
-            <Shop />
-            <AchievementPanel />
-          </div>
-          <Toolbar onAddEgg={handleAddEgg} />
+          <GameCanvas width={GAME_WIDTH} height={GAME_HEIGHT} />
+          <TopBar />
+          <ChickInfoPanel />
+          <Shop />
+          <AchievementPanel />
         </div>
+        <Toolbar />
       </div>
     </div>
   )

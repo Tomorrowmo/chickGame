@@ -11,7 +11,7 @@ const FOOD_OPTIONS: { type: FoodType; emoji: string; label: string }[] = [
 ]
 
 interface ToolbarProps {
-  onAddEgg: () => void
+  // no props needed
 }
 
 const btnBase: React.CSSProperties = {
@@ -33,7 +33,7 @@ const btnBase: React.CSSProperties = {
   WebkitTapHighlightColor: 'transparent',
 }
 
-export function Toolbar({ onAddEgg }: ToolbarProps) {
+export function Toolbar(_props: ToolbarProps) {
   const selectedFood = useGameStore((s) => s.selectedFood)
   const feedingMode = useGameStore((s) => s.feedingMode)
   const coins = useGameStore((s) => s.coins)
@@ -100,28 +100,6 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
         fontFamily,
       }}
     >
-      {/* Add Egg button */}
-      <button
-        onClick={onAddEgg}
-        style={{
-          ...btnBase,
-          background: '#fff8e1',
-        }}
-      >
-        <span style={{ fontSize: 22 }}>🥚</span>
-        <span style={{ fontSize: 11 }}>添加蛋</span>
-      </button>
-
-      {/* Divider */}
-      <div
-        style={{
-          width: 1,
-          height: 40,
-          background: 'rgba(0,0,0,0.1)',
-          margin: '0 4px',
-        }}
-      />
-
       {/* Food buttons */}
       <div style={{ position: 'relative', display: 'flex', gap: 8 }}>
         {/* Insufficient coins hint */}

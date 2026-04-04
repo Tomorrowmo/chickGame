@@ -471,8 +471,8 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
   }, [onClick, data])
 
   const handlePointerDown = useCallback(() => {
-    if (isEgg) {
-      // Eggs can't be picked up, just do regular click
+    if (isEgg && data.inCoop) {
+      // Eggs already in a coop can't be picked up, just do regular click
       handleClick()
       return
     }
@@ -481,7 +481,7 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
     // Start long press timer
     holdTimerRef.current = setTimeout(() => {
       if (pointerDownRef.current) {
-        // Long press detected — pick up chick
+        // Long press detected — pick up chick or egg
         smoothPosRef.current = { x: data.x, y: data.y }
         heldAnimRef.current = { time: 0, nuzzleActive: false, nuzzleStart: 0 }
         onPickup?.(data)

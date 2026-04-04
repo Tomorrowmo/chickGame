@@ -8,7 +8,7 @@ import { Pond } from './scene/Pond'
 import { Bushes } from './scene/Bush'
 import { Fence } from './scene/Fence'
 import { Flowers } from './scene/Flowers'
-import { Coop } from './scene/Coop'
+import { Coop, findNearestCoop, getCoopByType } from './scene/Coop'
 import { Chick } from './Chick'
 import { ClickEffects } from './ClickEffects'
 import { HatchEffect } from './HatchEffect'
@@ -303,6 +303,14 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   // Swipe detection state
   const prevPointerRef = useRef({ x: 0, y: 0 })
 
+  // Coop rejection message state
+  const [coopMessage, setCoopMessage] = useState<{ text: string; x: number; y: number; key: number } | null>(null)
+
+  const showCoopMessage = useCallback((text: string, x: number, y: number) => {
+    setCoopMessage({ text, x, y, key: Date.now() })
+    setTimeout(() => setCoopMessage(null), 2000)
+  }, [])
+
   const [hatchEffects, setHatchEffects] = useState<ActiveHatchEffect[]>([])
 
   const handleHatch = useCallback((data: ChickData) => {
@@ -355,6 +363,8 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   )
 
   /** Handle chick release (pointer up while holding) */
+  const placeEggInCoop = useGameStore((s) => s.placeEggInCoop)
+
   const handleChickRelease = useCallback(
     (data: ChickData) => {
       if (!heldChickId) return
@@ -367,8 +377,47 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
       const clampedX = Math.max(margin, Math.min(width - margin, pos.x))
       const clampedY = Math.max(grassTop, Math.min(grassBottom, pos.y))
 
-      // Update chick position and boost mood (+20)
       const chick = useGameStore.getState().chicks.find((c) => c.id === data.id)
+
+      // === Egg-coop interaction ===
+      if (chick && chick.stage === 'egg' && !chick.inCoop) {
+        const nearCoop = findNearestCoop(pos.x, pos.y, 80)
+        if (nearCoop) {
+          // Check if egg rarity matches coop type
+          if (chick.rarity === nearCoop.type) {
+            // Place egg in coop — snap to coop door position
+            const success = placeEggInCoop(chick.id, nearCoop.type)
+            if (success) {
+              updateChick(chick.id, {
+                x: nearCoop.x,
+                y: nearCoop.y,
+                targetX: nearCoop.x,
+                targetY: nearCoop.y,
+              })
+              showCoopMessage('蛋已放入鸡舍，开始孵化！', nearCoop.x, nearCoop.y - 60)
+              setHeldChickId(null)
+              _heldChickId = null
+              return
+            }
+          } else {
+            // Wrong coop — bounce back and show message
+            const correctCoop = getCoopByType(chick.rarity)
+            showCoopMessage(`这不是它的窝哦！请放到${correctCoop.label}`, nearCoop.x, nearCoop.y - 60)
+            // Bounce egg back to its original position
+            updateChick(data.id, {
+              x: chick.x,
+              y: chick.y,
+              targetX: chick.x,
+              targetY: chick.y,
+            })
+            setHeldChickId(null)
+            _heldChickId = null
+            return
+          }
+        }
+      }
+
+      // Normal release — update position and boost mood
       const newMood = Math.min(100, (chick?.moodValue ?? 50) + 20)
       updateChick(data.id, {
         x: clampedX,
@@ -396,7 +445,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
       setHeldChickId(null)
       _heldChickId = null
     },
-    [heldChickId, height, width, updateChick],
+    [heldChickId, height, width, updateChick, placeEggInCoop, showCoopMessage],
   )
 
   /** Handle background pointer up — releases held chick if clicking on background */
@@ -618,6 +667,30 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
         </pixiContainer>
       </Application>
       </div>
+      {/* Coop message toast */}
+      {coopMessage && (
+        <div
+          style={{
+            position: 'absolute',
+            left: coopMessage.x,
+            top: coopMessage.y,
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(93, 64, 55, 0.9)',
+            color: '#fff',
+            padding: '8px 16px',
+            borderRadius: 16,
+            fontSize: 14,
+            fontWeight: 'bold',
+            fontFamily: '"Comic Sans MS", "Chalkboard SE", cursive',
+            whiteSpace: 'nowrap',
+            zIndex: 25,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            pointerEvents: 'none',
+          }}
+        >
+          {coopMessage.text}
+        </div>
+      )}
       {currentGame === 'hideAndSeek' && (
         <GameOverlay
           title="躲猫猫"

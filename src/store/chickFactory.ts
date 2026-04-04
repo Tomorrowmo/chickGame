@@ -36,11 +36,17 @@ function createEggWithRarity(x: number, y: number, rarity: Rarity): ChickData {
     birthTime: Date.now(),
     eggTimer: 3000,
     eggsLaid: 0,
+    inCoop: false,
+    coopType: null,
   }
 }
 
 export function createEgg(x: number, y: number): ChickData {
   return createEggWithRarity(x, y, rollRarity())
+}
+
+export function createCommonEgg(x: number, y: number): ChickData {
+  return createEggWithRarity(x, y, 'common')
 }
 
 export function createSpecialEgg(x: number, y: number): ChickData {

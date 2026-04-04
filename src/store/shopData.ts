@@ -15,7 +15,7 @@ export interface ShopItem {
 
 export interface EggShopItem extends ShopItem {
   category: 'eggs'
-  eggType: 'special' | 'rare' | 'mystery'
+  eggType: 'common' | 'special' | 'rare' | 'mystery'
 }
 
 export interface DecorationShopItem extends ShopItem {
@@ -31,14 +31,23 @@ export interface FoodShopItem extends ShopItem {
 export type AnyShopItem = EggShopItem | DecorationShopItem | FoodShopItem
 
 export const SHOP_ITEMS: AnyShopItem[] = [
-  // Special Eggs
+  // Eggs by breed type
+  {
+    id: 'egg-common',
+    category: 'eggs',
+    name: '普通蛋',
+    icon: '🥚',
+    price: 20,
+    description: '随机孵出普通品种小鸡（白/黄/棕）',
+    eggType: 'common',
+  },
   {
     id: 'egg-special',
     category: 'eggs',
     name: '特殊蛋',
     icon: '🥚',
     price: 50,
-    description: '保证孵出特殊品种的小鸡！',
+    description: '随机孵出特殊品种小鸡（斑点/条纹/彩色）',
     eggType: 'special',
   },
   {
@@ -47,7 +56,7 @@ export const SHOP_ITEMS: AnyShopItem[] = [
     name: '稀有蛋',
     icon: '🥚',
     price: 150,
-    description: '保证孵出稀有品种的小鸡！',
+    description: '随机孵出稀有品种小鸡（金色/彩虹/水晶）',
     eggType: 'rare',
   },
   {

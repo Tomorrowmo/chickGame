@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ChickData } from '../types/chick'
-import { createEgg, createSpecialEgg, createRareEgg, createMysteryEgg } from './chickFactory'
+import { createEgg, createCommonEgg, createSpecialEgg, createRareEgg, createMysteryEgg } from './chickFactory'
 import { loadGame, saveGame as persistSave, startAutoSave } from '../systems/persistence'
 import { advanceTime } from '../systems/timeSystem'
 import type { DecorationType } from './shopData'
@@ -118,9 +118,12 @@ interface GameState {
   saveGame: () => void
   showSaveIndicator: boolean
   setShopOpen: (open: boolean) => void
+  buyCommonEgg: (x: number, y: number) => boolean
   buySpecialEgg: (x: number, y: number) => boolean
   buyRareEgg: (x: number, y: number) => boolean
   buyMysteryEgg: (x: number, y: number) => boolean
+  placeEggInCoop: (chickId: string, coopType: import('../types/chick').CoopType) => boolean
+  rejectEggFromCoop: (chickId: string) => void
   buyDecoration: (type: DecorationType, price: number) => boolean
   buyPremiumFood: (foodType: FoodType, price: number) => boolean
   checkAchievements: () => void
@@ -219,6 +222,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const updated = state.chicks.map((chick) => {
       let { hunger, moodValue, growthProgress, stage, mood, eggTimer, eggsLaid } = chick
+
+      // Eggs that are NOT in a coop don't advance at all
+      if ((chick.stage === 'egg' || chick.stage === 'hatching') && !chick.inCoop) {
+        return chick
+      }
 
       // Hunger decreases over time
       hunger = Math.max(0, hunger - 0.01 * delta)
@@ -383,6 +391,17 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setShopOpen: (open) => set({ shopOpen: open }),
 
+  buyCommonEgg: (x, y) => {
+    const state = get()
+    if (state.coins < 20) return false
+    set({
+      coins: state.coins - 20,
+      chicks: [...state.chicks, createCommonEgg(x, y)],
+    })
+    get().incrementStat('totalShopPurchases')
+    return true
+  },
+
   buySpecialEgg: (x, y) => {
     const state = get()
     if (state.coins < 50) return false
@@ -414,6 +433,26 @@ export const useGameStore = create<GameState>((set, get) => ({
     })
     get().incrementStat('totalShopPurchases')
     return true
+  },
+
+  placeEggInCoop: (chickId, coopType) => {
+    const state = get()
+    const chick = state.chicks.find((c) => c.id === chickId)
+    if (!chick || chick.stage !== 'egg') return false
+    // Check rarity matches coop type
+    if (chick.rarity !== coopType) return false
+    set({
+      chicks: state.chicks.map((c) =>
+        c.id === chickId ? { ...c, inCoop: true, coopType } : c,
+      ),
+    })
+    return true
+  },
+
+  rejectEggFromCoop: (chickId) => {
+    // Egg bounces back — just a visual cue, no state change needed
+    // The caller will handle showing the message
+    void chickId
   },
 
   buyDecoration: (type, price) => {

@@ -20,6 +20,7 @@ export function Shop() {
   const shopOpen = useGameStore((s) => s.shopOpen)
   const setShopOpen = useGameStore((s) => s.setShopOpen)
   const coins = useGameStore((s) => s.coins)
+  const buyCommonEgg = useGameStore((s) => s.buyCommonEgg)
   const buySpecialEgg = useGameStore((s) => s.buySpecialEgg)
   const buyRareEgg = useGameStore((s) => s.buyRareEgg)
   const buyMysteryEgg = useGameStore((s) => s.buyMysteryEgg)
@@ -46,7 +47,8 @@ export function Shop() {
         const eggItem = item as EggShopItem
         const x = randomGrassX(GAME_WIDTH)
         const y = randomGrassY(GAME_HEIGHT)
-        if (eggItem.eggType === 'special') success = buySpecialEgg(x, y)
+        if (eggItem.eggType === 'common') success = buyCommonEgg(x, y)
+        else if (eggItem.eggType === 'special') success = buySpecialEgg(x, y)
         else if (eggItem.eggType === 'rare') success = buyRareEgg(x, y)
         else if (eggItem.eggType === 'mystery') success = buyMysteryEgg(x, y)
       } else if (item.category === 'decorations') {
@@ -61,7 +63,7 @@ export function Shop() {
         showMessage(`成功购买 ${item.name}！`)
       }
     },
-    [coins, buySpecialEgg, buyRareEgg, buyMysteryEgg, buyDecoration, buyPremiumFood, showMessage],
+    [coins, buyCommonEgg, buySpecialEgg, buyRareEgg, buyMysteryEgg, buyDecoration, buyPremiumFood, showMessage],
   )
 
   if (!shopOpen) return null
