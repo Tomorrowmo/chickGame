@@ -5,7 +5,6 @@ import { Background } from './Background'
 import { Chick } from './Chick'
 import { ClickEffects } from './ClickEffects'
 import { HatchEffect } from './HatchEffect'
-import { FeedButton } from './FeedButton'
 import { FoodParticles } from './FoodParticles'
 import { useGameStore } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
@@ -24,13 +23,13 @@ const GRASS_RATIO = 0.6
 const CURSOR_ATTRACT_RADIUS = 100
 
 /** Returns a random x position within the grass area */
-function randomGrassX(width: number): number {
+export function randomGrassX(width: number): number {
   const margin = 60
   return margin + Math.random() * (width - margin * 2)
 }
 
 /** Returns a random y position within the grass area (lower portion of screen) */
-function randomGrassY(height: number): number {
+export function randomGrassY(height: number): number {
   const grassTop = height * 0.55
   const grassBottom = height - 40
   return grassTop + Math.random() * (grassBottom - grassTop)
@@ -142,7 +141,6 @@ interface ActiveHatchEffect {
 
 export function GameCanvas({ width, height }: GameCanvasProps) {
   const chicks = useGameStore((s) => s.chicks)
-  const addEgg = useGameStore((s) => s.addEgg)
   const selectChick = useGameStore((s) => s.selectChick)
   const petChick = useGameStore((s) => s.petChick)
   const updateChick = useGameStore((s) => s.updateChick)
@@ -164,10 +162,6 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   }, [])
 
   const grassY = height * GRASS_RATIO
-
-  const handleAddEgg = useCallback(() => {
-    addEgg(randomGrassX(width), randomGrassY(height))
-  }, [addEgg, width, height])
 
   const handleChickClick = useCallback(
     (data: ChickData) => {
@@ -267,26 +261,6 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           ))}
         </pixiContainer>
       </Application>
-      <FeedButton />
-      <button
-        onClick={handleAddEgg}
-        style={{
-          position: 'absolute',
-          bottom: 16,
-          right: 16,
-          padding: '8px 16px',
-          fontSize: 16,
-          borderRadius: 8,
-          border: 'none',
-          background: '#f5c542',
-          color: '#333',
-          cursor: 'pointer',
-          fontWeight: 'bold',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-        }}
-      >
-        Add Egg
-      </button>
     </div>
   )
 }
