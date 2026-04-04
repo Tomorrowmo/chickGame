@@ -1,5 +1,5 @@
-import { useCallback } from 'react'
-import { extend } from '@pixi/react'
+import { useCallback, useRef } from 'react'
+import { extend, useTick } from '@pixi/react'
 import { Graphics, Text, Container } from 'pixi.js'
 import type { ChickData } from '../types/chick'
 
@@ -19,6 +19,10 @@ const MOOD_EMOJI: Record<string, string> = {
   angry: '💢',
 }
 
+/** Bounce animation duration in frames (~0.3s at 60fps = 18 frames) */
+const BOUNCE_DURATION = 18
+const BOUNCE_HEIGHT = 12
+
 interface ChickProps {
   data: ChickData
   onClick?: (data: ChickData) => void
@@ -28,6 +32,25 @@ export function Chick({ data, onClick }: ChickProps) {
   const scale = STAGE_SCALE[data.stage] ?? 1.0
   const isEgg = data.stage === 'egg' || data.stage === 'hatching'
   const moodEmoji = MOOD_EMOJI[data.mood]
+
+  // Bounce animation state
+  const bounceRef = useRef({ active: false, timer: 0 })
+  const bounceOffsetRef = useRef(0)
+
+  useTick((ticker) => {
+    const b = bounceRef.current
+    if (!b.active) return
+    b.timer += ticker.deltaTime
+    if (b.timer >= BOUNCE_DURATION) {
+      b.active = false
+      b.timer = 0
+      bounceOffsetRef.current = 0
+    } else {
+      // Sine curve: up then back down
+      const progress = b.timer / BOUNCE_DURATION
+      bounceOffsetRef.current = -Math.sin(progress * Math.PI) * BOUNCE_HEIGHT
+    }
+  })
 
   const drawBody = useCallback(
     (g: Graphics) => {
@@ -68,13 +91,16 @@ export function Chick({ data, onClick }: ChickProps) {
   )
 
   const handleClick = useCallback(() => {
+    // Trigger bounce animation
+    bounceRef.current.active = true
+    bounceRef.current.timer = 0
     onClick?.(data)
   }, [onClick, data])
 
   return (
     <pixiContainer
       x={data.x}
-      y={data.y}
+      y={data.y + bounceOffsetRef.current}
       scale={scale}
       eventMode="static"
       cursor="pointer"
