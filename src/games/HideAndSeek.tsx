@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Graphics } from 'pixi.js'
 import { BUSH_POSITIONS } from '../components/scene/Bush'
 import { useGameStore } from '../store/gameStore'
+import { gameStart, gameWin, gameLose } from '../systems/audio'
 import type { GamePhase } from './GameOverlay'
 
 /** A chick hidden behind a bush */
@@ -222,8 +223,13 @@ export function HideAndSeekGame() {
       timerRef.current = null
       awardRewards(finalScore)
       setPhase('ended')
+      if (finalScore >= totalChicks) {
+        gameWin()
+      } else {
+        gameLose()
+      }
     },
-    [awardRewards],
+    [awardRewards, totalChicks],
   )
 
   // Animate found chicks
@@ -261,6 +267,7 @@ export function HideAndSeekGame() {
     setTimeLeft(GAME_DURATION)
     setScore(0)
     setHiddenChicks(generateHiddenChicks())
+    gameStart()
 
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {

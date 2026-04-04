@@ -18,6 +18,7 @@ import { GameOverlay } from '../games/GameOverlay'
 import { useGameStore } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
 import { updateChickAI } from '../systems/chickAI'
+import { chirp, feed } from '../systems/audio'
 import type { ChickData } from '../types/chick'
 import type { FederatedPointerEvent } from 'pixi.js'
 
@@ -189,6 +190,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
     (data: ChickData) => {
       selectChick(data.id)
       petChick(data.id)
+      chirp()
 
       // Spawn a heart effect at the chick position
       addEffect('heart', data.x, data.y - 20)
@@ -221,6 +223,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
       // Feeding mode: scatter food on grass
       if (feedingMode && selectedFood && y > grassY) {
         scatterFood(selectedFood, x, y)
+        feed()
         return
       }
 

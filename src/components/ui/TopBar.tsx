@@ -1,10 +1,18 @@
+import { useState, useCallback } from 'react'
 import { useGameStore } from '../../store/gameStore'
+import { isMuted, toggleMute } from '../../systems/audio'
 
 const fontFamily = '"Comic Sans MS", "Chalkboard SE", cursive'
 
 export function TopBar() {
   const coins = useGameStore((s) => s.coins)
   const chicks = useGameStore((s) => s.chicks)
+  const [muted, setMuted] = useState(isMuted)
+
+  const handleToggleMute = useCallback(() => {
+    toggleMute()
+    setMuted(isMuted())
+  }, [])
 
   const chickCount = chicks.filter(
     (c) => c.stage !== 'egg' && c.stage !== 'hatching',
@@ -50,6 +58,20 @@ export function TopBar() {
           <span style={{ fontWeight: 'bold' }}>{eggCount}</span>
         </span>
       )}
+      <span
+        role="button"
+        onClick={handleToggleMute}
+        style={{
+          fontSize: 20,
+          cursor: 'pointer',
+          pointerEvents: 'auto',
+          opacity: 0.8,
+          marginLeft: 4,
+        }}
+        title={muted ? 'Unmute' : 'Mute'}
+      >
+        {muted ? '🔇' : '🔊'}
+      </span>
     </div>
   )
 }

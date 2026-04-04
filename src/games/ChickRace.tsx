@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Graphics } from 'pixi.js'
 import { useTick } from '@pixi/react'
 import { useGameStore } from '../store/gameStore'
+import { gameStart, gameWin, gameLose } from '../systems/audio'
 import type { GamePhase } from './GameOverlay'
 
 /** Canvas dimensions */
@@ -219,6 +220,7 @@ export function ChickRaceGame() {
     setCoinsEarned(0)
     boostRef.current = 0
     finishCountRef.current = 0
+    gameStart()
   }, [initChicks])
 
   const handleSelectLane = useCallback((lane: number) => {
@@ -333,6 +335,11 @@ export function ChickRaceGame() {
     if (coins > 0) addCoins(coins)
     boostAllChickMood(10)
     setPhase('ended')
+    if (playerPlace === 1) {
+      gameWin()
+    } else {
+      gameLose()
+    }
   }, [raceState, playerPlace, addCoins, boostAllChickMood])
 
   const handlePlayAgain = useCallback(() => {

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { Graphics } from 'pixi.js'
 import { useTick } from '@pixi/react'
 import { useGameStore } from '../store/gameStore'
+import { gameStart, gameWin } from '../systems/audio'
 import type { GamePhase } from './GameOverlay'
 
 /** Canvas dimensions */
@@ -395,6 +396,7 @@ export function FetchGame() {
     setRoundScore(0)
     setBall({ x: THROW_ORIGIN_X, y: THROW_ORIGIN_Y, vx: 0, vy: 0, landed: false, bounced: false })
     setChick({ x: CHICK_START_X, hasBall: false, bobPhase: 0 })
+    gameStart()
   }, [])
 
   const handleDragStart = useCallback(
@@ -477,6 +479,7 @@ export function FetchGame() {
             if (coins > 0) addCoins(coins)
             boostAllChickMood(10)
             setPhase('ended')
+            gameWin()
           } else {
             // Next round after a short delay
             setTimeout(() => {
