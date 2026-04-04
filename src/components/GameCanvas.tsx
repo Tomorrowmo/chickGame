@@ -1,9 +1,10 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { Application, extend, useTick } from '@pixi/react'
 import { Container, Graphics, Text } from 'pixi.js'
 import { Background } from './Background'
 import { Chick } from './Chick'
 import { ClickEffects } from './ClickEffects'
+import { HatchEffect } from './HatchEffect'
 import { useGameStore } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
 import { updateChickAI } from '../systems/chickAI'
@@ -75,6 +76,12 @@ function GameLoop() {
   return null
 }
 
+interface ActiveHatchEffect {
+  id: string
+  x: number
+  y: number
+}
+
 export function GameCanvas({ width, height }: GameCanvasProps) {
   const chicks = useGameStore((s) => s.chicks)
   const addEgg = useGameStore((s) => s.addEgg)
@@ -83,6 +90,17 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   const updateChick = useGameStore((s) => s.updateChick)
   const addEffect = useClickEffectsStore((s) => s.addEffect)
   const setCursor = useClickEffectsStore((s) => s.setCursor)
+
+  const [hatchEffects, setHatchEffects] = useState<ActiveHatchEffect[]>([])
+
+  const handleHatch = useCallback((data: ChickData) => {
+    const id = `hatch-${data.id}-${Date.now()}`
+    setHatchEffects((prev) => [...prev, { id, x: data.x, y: data.y }])
+  }, [])
+
+  const removeHatchEffect = useCallback((id: string) => {
+    setHatchEffects((prev) => prev.filter((e) => e.id !== id))
+  }, [])
 
   const grassY = height * GRASS_RATIO
 
@@ -157,7 +175,20 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           <Background width={width} height={height} />
           <ClickEffects />
           {chicks.map((chick) => (
-            <Chick key={chick.id} data={chick} onClick={handleChickClick} />
+            <Chick
+              key={chick.id}
+              data={chick}
+              onClick={handleChickClick}
+              onHatch={handleHatch}
+            />
+          ))}
+          {hatchEffects.map((effect) => (
+            <HatchEffect
+              key={effect.id}
+              x={effect.x}
+              y={effect.y}
+              onComplete={() => removeHatchEffect(effect.id)}
+            />
           ))}
         </pixiContainer>
       </Application>
