@@ -242,8 +242,8 @@ export function updateChickAI(
   }
 
   // === Separation: push away from chicks that are too close ===
-  const SEPARATION_RADIUS = 30
-  const SEPARATION_FORCE = 0.3
+  const SEPARATION_RADIUS = 60
+  const SEPARATION_FORCE = 0.8
   let sepX = 0
   let sepY = 0
   for (const other of otherChicks) {

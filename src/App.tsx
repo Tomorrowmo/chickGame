@@ -12,7 +12,7 @@ import './App.css'
 const GAME_WIDTH = 960
 const GAME_HEIGHT = 640
 const TOOLBAR_HEIGHT = 72
-const PADDING = 24
+const PADDING = 16
 
 function useResponsiveScale() {
   const [scale, setScale] = useState(1)
@@ -67,10 +67,15 @@ function App() {
       <div
         className="game-outer"
         style={{
-          width: GAME_WIDTH,
-          transform: `scale(${scale})`,
+          width: GAME_WIDTH * scale,
+          height: (GAME_HEIGHT + TOOLBAR_HEIGHT) * scale,
         }}
       >
+        <div style={{
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+          width: GAME_WIDTH,
+        }}>
         <div
           className="game-wrapper"
           style={{
@@ -85,6 +90,7 @@ function App() {
           <AchievementPanel />
         </div>
         <Toolbar onAddEgg={handleAddEgg} />
+        </div>
       </div>
     </div>
   )

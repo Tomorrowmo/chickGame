@@ -172,17 +172,16 @@ function GameLoop() {
         }
       }
 
-      // Cursor-following: limited to MAX_CURSOR_FOLLOWERS, only curious chicks follow
-      if (cursorOnGrass && cursorFollowers < MAX_CURSOR_FOLLOWERS) {
+      // Cursor-following: max 2 chicks, only occasionally re-evaluate (not every frame)
+      if (cursorOnGrass && cursorFollowers < MAX_CURSOR_FOLLOWERS && Math.random() < 0.002) {
         const dx = cursorX - chick.x
         const dy = cursorY - chick.y
         const dist = Math.sqrt(dx * dx + dy * dy)
         if (dist < CURSOR_ATTRACT_RADIUS && dist > 5) {
-          // Only curious chicks follow: happy 30%, normal 10%, bored/angry never
           const followChance =
-            chick.mood === 'happy' ? 0.3 :
-            chick.mood === 'normal' ? 0.1 :
-            0 // bored and angry never follow
+            chick.mood === 'happy' ? 0.2 :
+            chick.mood === 'normal' ? 0.05 :
+            0
           if (followChance > 0 && Math.random() < followChance) {
             updateChick(chick.id, {
               currentAction: 'walking',
@@ -191,7 +190,7 @@ function GameLoop() {
               direction: dx > 0 ? 'right' : 'left',
             })
             cursorFollowers++
-            continue // skip normal AI for this chick
+            continue
           }
         }
       }
