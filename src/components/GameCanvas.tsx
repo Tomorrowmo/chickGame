@@ -172,17 +172,13 @@ function GameLoop() {
         }
       }
 
-      // Cursor-following: max 2 chicks, only occasionally re-evaluate (not every frame)
-      if (cursorOnGrass && cursorFollowers < MAX_CURSOR_FOLLOWERS && Math.random() < 0.002) {
-        const dx = cursorX - chick.x
-        const dy = cursorY - chick.y
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist < CURSOR_ATTRACT_RADIUS && dist > 5) {
-          const followChance =
-            chick.mood === 'happy' ? 0.2 :
-            chick.mood === 'normal' ? 0.05 :
-            0
-          if (followChance > 0 && Math.random() < followChance) {
+      // Cursor-following: extremely rare, max 1 chick, only baby chicks are curious
+      if (cursorOnGrass && cursorFollowers < 1 && Math.random() < 0.0003) {
+        if (chick.stage === 'baby' && chick.mood === 'happy') {
+          const dx = cursorX - chick.x
+          const dy = cursorY - chick.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 80 && dist > 10) {
             updateChick(chick.id, {
               currentAction: 'walking',
               targetX: cursorX,
