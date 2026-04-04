@@ -126,13 +126,34 @@ export function feed() {
 /** Crack + mini fanfare for egg hatching */
 export function hatch() {
   const t = getCtx().currentTime
-  // crack
-  noise(t, 0.12, 0.3, 2000)
-  noise(t + 0.05, 0.1, 0.2, 3000)
-  // fanfare
-  osc('triangle', 523, t + 0.2, 0.15, 0.2)
-  osc('triangle', 659, t + 0.35, 0.15, 0.2)
-  osc('triangle', 784, t + 0.5, 0.25, 0.25)
+  // === Cracking sounds: multiple cracks building up ===
+  noise(t, 0.08, 0.15, 2500)
+  noise(t + 0.1, 0.06, 0.12, 3000)
+  noise(t + 0.18, 0.1, 0.2, 2000)
+  // Big crack
+  noise(t + 0.3, 0.15, 0.35, 1800)
+  noise(t + 0.32, 0.12, 0.3, 3500)
+  // Shell pop
+  freqRamp('square', 400, 100, t + 0.4, 0.06, 0.2)
+
+  // === Baby chick first chirp! ===
+  osc('sine', 1200, t + 0.55, 0.06, 0.12)
+  osc('sine', 1400, t + 0.62, 0.05, 0.10)
+  osc('sine', 1100, t + 0.68, 0.07, 0.11)
+
+  // === Celebration fanfare: ascending sparkle notes ===
+  osc('triangle', 523, t + 0.8, 0.12, 0.18)   // C5
+  osc('triangle', 659, t + 0.92, 0.12, 0.18)  // E5
+  osc('triangle', 784, t + 1.04, 0.12, 0.18)  // G5
+  osc('triangle', 1047, t + 1.16, 0.3, 0.22)  // C6 (held longer)
+  // Sparkle shimmer
+  osc('sine', 2093, t + 1.2, 0.08, 0.06)
+  osc('sine', 2349, t + 1.28, 0.06, 0.05)
+  osc('sine', 2637, t + 1.35, 0.05, 0.04)
+  // Final warm chord
+  osc('triangle', 523, t + 1.4, 0.4, 0.15)
+  osc('triangle', 659, t + 1.4, 0.4, 0.12)
+  osc('triangle', 784, t + 1.4, 0.4, 0.12)
 }
 
 /** Small pop for effects appearing */

@@ -233,7 +233,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       // Mood decreases slowly
       moodValue = Math.max(0, moodValue - 0.005 * delta)
       // Growth increases
-      growthProgress = Math.min(100, growthProgress + 0.02 * delta)
+      // Growth speed: eggs/hatching grow faster, other stages slower
+      const isEggStage = stage === 'egg' || stage === 'hatching'
+      const growthSpeed = isEggStage ? 0.08 : 0.04
+      growthProgress = Math.min(100, growthProgress + growthSpeed * delta)
 
       // Update mood label
       if (moodValue > 70) mood = 'happy'

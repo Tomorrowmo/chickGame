@@ -22,7 +22,7 @@ import { GameOverlay } from '../games/GameOverlay'
 import { useGameStore, type PlacedDecoration } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
 import { updateChickAI } from '../systems/chickAI'
-import { chirp, feed, splash as splashSound } from '../systems/audio'
+import { chirp, feed, hatch, splash as splashSound } from '../systems/audio'
 import type { ChickData } from '../types/chick'
 import type { FederatedPointerEvent } from 'pixi.js'
 
@@ -314,6 +314,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   const handleHatch = useCallback((data: ChickData) => {
     const id = `hatch-${data.id}-${Date.now()}`
     setHatchEffects((prev) => [...prev, { id, x: data.x, y: data.y }])
+    hatch()
   }, [])
 
   const removeHatchEffect = useCallback((id: string) => {
