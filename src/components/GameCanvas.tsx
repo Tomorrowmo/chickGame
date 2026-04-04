@@ -257,6 +257,15 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
         cursor: feedingMode ? 'crosshair' : 'default',
       }}
     >
+      <div style={{
+        position: 'relative',
+        zIndex: 1,
+        pointerEvents: (currentGame && (
+          (currentGame === 'hideAndSeek' && hideAndSeek.phase !== 'playing') ||
+          (currentGame === 'race' && chickRace.phase !== 'playing') ||
+          (currentGame === 'fetch' && fetchGame.phase !== 'playing')
+        )) ? 'none' : 'auto',
+      }}>
       <Application width={width} height={height} background="#87CEEB">
         <pixiContainer
           eventMode="static"
@@ -344,6 +353,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           )}
         </pixiContainer>
       </Application>
+      </div>
       {currentGame === 'hideAndSeek' && (
         <GameOverlay
           title="躲猫猫"
