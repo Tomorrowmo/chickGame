@@ -436,7 +436,7 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
     [isEgg, isHatching, data.direction, data.currentAction, data.mood, breed, isBaby, bodyRadius, appearance],
   )
 
-  // Egg-laying is now handled by the EggChoice component (pendingEggs system)
+  // Egg-laying is now handled by the LaidEgg + EggChoice components (laidEggs system)
 
   // Egg progress indicator for adults
   const isAdult = data.stage === 'adult'

@@ -15,7 +15,9 @@ import { HatchEffect } from './HatchEffect'
 import { FoodParticles } from './FoodParticles'
 import { SwipeTrail } from './SwipeTrail'
 import { DirtSpots } from './DirtSpots'
+import { LaidEgg } from './LaidEgg'
 import { EggChoice } from './EggChoice'
+import { CoopStatus } from './scene/CoopStatus'
 import { HideAndSeekGame, HideAndSeekPixi } from '../games/HideAndSeek'
 import { ChickRaceGame, ChickRacePixi, ChickRaceOverlay } from '../games/ChickRace'
 import { FetchGame, FetchPixi, FetchInputLayer, FetchOverlay } from '../games/Fetch'
@@ -258,7 +260,8 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   const scatterFood = useGameStore((s) => s.scatterFood)
   const currentGame = useGameStore((s) => s.currentGame)
   const cleaningMode = useGameStore((s) => s.cleaningMode)
-  const pendingEggs = useGameStore((s) => s.pendingEggs)
+  const laidEggs = useGameStore((s) => s.laidEggs)
+  const [selectedLaidEggId, setSelectedLaidEggId] = useState<string | null>(null)
   const addEffect = useClickEffectsStore((s) => s.addEffect)
   const setCursor = useClickEffectsStore((s) => s.setCursor)
   const triggerPondSplash = useClickEffectsStore((s) => s.triggerPondSplash)
@@ -287,6 +290,19 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
     setCoopMessage({ text, x, y, key: Date.now() })
     setTimeout(() => setCoopMessage(null), 2000)
   }, [])
+
+  const handleLaidEggClick = useCallback((eggId: string) => {
+    pop()
+    setSelectedLaidEggId(eggId)
+  }, [])
+
+  const handleEggChoiceClose = useCallback(() => {
+    setSelectedLaidEggId(null)
+  }, [])
+
+  const handleEggChoiceMessage = useCallback((text: string, x: number, y: number) => {
+    showCoopMessage(text, x, y)
+  }, [showCoopMessage])
 
   const [hatchEffects, setHatchEffects] = useState<ActiveHatchEffect[]>([])
 
@@ -571,6 +587,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           <Flowers />
           <Bushes />
           <Coop />
+          <CoopStatus />
           <Decorations />
           <ClickEffects />
           <FoodParticles />
@@ -589,9 +606,21 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
               holdCursorY={heldChickId === chick.id ? cursorPos.y : undefined}
             />
           ))}
-          {pendingEggs.slice(-3).map((egg) => (
-            <EggChoice key={egg.id} egg={egg} />
+          {laidEggs.map((egg) => (
+            <LaidEgg key={egg.id} egg={egg} onClick={handleLaidEggClick} />
           ))}
+          {selectedLaidEggId && (() => {
+            const egg = laidEggs.find((e) => e.id === selectedLaidEggId)
+            if (!egg) return null
+            return (
+              <EggChoice
+                key={egg.id}
+                egg={egg}
+                onClose={handleEggChoiceClose}
+                onShowMessage={handleEggChoiceMessage}
+              />
+            )
+          })()}
           {hatchEffects.map((effect) => (
             <HatchEffect
               key={effect.id}

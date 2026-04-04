@@ -77,14 +77,14 @@ export interface EggLayEvent {
   timestamp: number
 }
 
-export interface PendingEgg {
+export interface LaidEgg {
   id: string
-  chickId: string
   rarity: Rarity
+  breed: string
   x: number
   y: number
   reward: number
-  createdAt: number
+  createdAt: number  // Date.now()
 }
 
 interface GameState {
@@ -100,7 +100,7 @@ interface GameState {
   decorations: PlacedDecoration[]
   dirtSpots: DirtSpot[]
   cleaningMode: boolean
-  pendingEggs: PendingEgg[]
+  laidEggs: LaidEgg[]
   dirtSpawnTimer: number
   shopOpen: boolean
   achievementStats: AchievementStats
@@ -126,9 +126,8 @@ interface GameState {
   addCoins: (amount: number) => void
   boostAllChickMood: (amount: number) => void
   clearEggLayEvents: () => void
-  sellPendingEgg: (eggId: string) => void
-  hatchPendingEgg: (eggId: string) => void
-  dismissPendingEgg: (eggId: string) => void
+  sellLaidEgg: (eggId: string) => void
+  hatchLaidEgg: (eggId: string) => void
   saveGame: () => void
   showSaveIndicator: boolean
   setShopOpen: (open: boolean) => void
@@ -162,7 +161,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   currentGame: null,
   eggLayEvents: [],
   decorations: savedState?.decorations ?? [],
-  pendingEggs: [],
+  laidEggs: [],
   dirtSpots: [],
   cleaningMode: false,
   dirtSpawnTimer: 0,
@@ -232,7 +231,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get()
     const newGameTime = advanceTime(state.gameTime, delta)
     const newEggLayEvents: EggLayEvent[] = []
-    const newPendingEggs: PendingEgg[] = []
+    const newLaidEggs: LaidEgg[] = []
     let newHatches = 0
 
     const updated = state.chicks.map((chick) => {
@@ -288,12 +287,12 @@ export const useGameStore = create<GameState>((set, get) => ({
             reward,
             timestamp: Date.now(),
           })
-          newPendingEggs.push({
-            id: `egg-${chick.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            chickId: chick.id,
+          newLaidEggs.push({
+            id: `laid-${chick.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             rarity: chick.rarity,
+            breed: chick.breed,
             x: chick.x,
-            y: chick.y,
+            y: Math.min(850, chick.y + 20),
             reward,
             createdAt: Date.now(),
           })
@@ -321,17 +320,22 @@ export const useGameStore = create<GameState>((set, get) => ({
       ]
     }
 
+    // Remove laid eggs older than 30 seconds
+    const now = Date.now()
+    const LAID_EGG_LIFETIME_MS = 30000
+    const survivingLaidEggs = state.laidEggs.filter(
+      (e) => now - e.createdAt < LAID_EGG_LIFETIME_MS,
+    )
+
     const updates: Partial<GameState> = {
       chicks: updated,
       gameTime: newGameTime,
       dirtSpots: newDirtSpots,
       dirtSpawnTimer: newDirtTimer,
+      laidEggs: [...survivingLaidEggs, ...newLaidEggs],
     }
     if (newEggLayEvents.length > 0) {
       updates.eggLayEvents = [...state.eggLayEvents, ...newEggLayEvents]
-    }
-    if (newPendingEggs.length > 0) {
-      updates.pendingEggs = [...state.pendingEggs, ...newPendingEggs]
     }
     set(updates as GameState)
     if (newEggLayEvents.length > 0) {
@@ -407,35 +411,27 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   clearEggLayEvents: () => set({ eggLayEvents: [] }),
 
-  sellPendingEgg: (eggId) => {
+  sellLaidEgg: (eggId) => {
     const state = get()
-    const egg = state.pendingEggs.find((e) => e.id === eggId)
+    const egg = state.laidEggs.find((e) => e.id === eggId)
     if (!egg) return
     set({
-      pendingEggs: state.pendingEggs.filter((e) => e.id !== eggId),
+      laidEggs: state.laidEggs.filter((e) => e.id !== eggId),
       coins: state.coins + egg.reward,
     })
     get().incrementStat('totalCoinsFromEggs', egg.reward)
   },
 
-  hatchPendingEgg: (eggId) => {
+  hatchLaidEgg: (eggId) => {
     const state = get()
-    const egg = state.pendingEggs.find((e) => e.id === eggId)
+    const egg = state.laidEggs.find((e) => e.id === eggId)
     if (!egg) return
-    // Create a new egg chick in the grass near the chicken
-    const offsetX = (Math.random() - 0.5) * 80
-    const newEggX = Math.max(60, Math.min(1380, egg.x + offsetX))
-    const newEggY = Math.max(570, Math.min(850, egg.y + 30 + Math.random() * 40))
-    const newChick = createEgg(newEggX, newEggY)
+    // Create a real egg chick at the laid egg's position
+    const newChick = createEgg(egg.x, egg.y)
     set({
-      pendingEggs: state.pendingEggs.filter((e) => e.id !== eggId),
+      laidEggs: state.laidEggs.filter((e) => e.id !== eggId),
       chicks: [...state.chicks, newChick],
     })
-  },
-
-  dismissPendingEgg: (eggId) => {
-    // Same as sell (fallback)
-    get().sellPendingEgg(eggId)
   },
 
   saveGame: () => {

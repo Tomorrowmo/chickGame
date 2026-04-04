@@ -1,118 +1,113 @@
 import { useCallback, useRef } from 'react'
 import { extend, useTick } from '@pixi/react'
 import { Graphics, Text, Container } from 'pixi.js'
-import type { PendingEgg } from '../store/gameStore'
+import type { LaidEgg } from '../store/gameStore'
 import { useGameStore } from '../store/gameStore'
 import { pop, chirp } from '../systems/audio'
 
 extend({ Graphics, Text, Container })
 
-const AUTO_DISMISS_MS = 15000
-
 interface EggChoiceProps {
-  egg: PendingEgg
+  egg: LaidEgg
+  onClose: () => void
+  onShowMessage: (text: string, x: number, y: number) => void
 }
 
-export function EggChoice({ egg }: EggChoiceProps) {
-  const sellPendingEgg = useGameStore((s) => s.sellPendingEgg)
-  const hatchPendingEgg = useGameStore((s) => s.hatchPendingEgg)
+export function EggChoice({ egg, onClose, onShowMessage }: EggChoiceProps) {
+  const sellLaidEgg = useGameStore((s) => s.sellLaidEgg)
+  const hatchLaidEgg = useGameStore((s) => s.hatchLaidEgg)
 
   const animRef = useRef({ time: 0, dismissed: false })
-  const dismissTimerRef = useRef(egg.createdAt)
 
   useTick((ticker) => {
     animRef.current.time += ticker.deltaTime
-    if (!animRef.current.dismissed && Date.now() - dismissTimerRef.current > AUTO_DISMISS_MS) {
-      animRef.current.dismissed = true
-      sellPendingEgg(egg.id)
-    }
   })
 
   const handleSell = useCallback(() => {
     if (animRef.current.dismissed) return
     animRef.current.dismissed = true
     pop()
-    sellPendingEgg(egg.id)
-  }, [sellPendingEgg, egg.id])
+    sellLaidEgg(egg.id)
+    onClose()
+  }, [sellLaidEgg, egg.id, onClose])
 
   const handleHatch = useCallback(() => {
     if (animRef.current.dismissed) return
     animRef.current.dismissed = true
     chirp()
-    hatchPendingEgg(egg.id)
-  }, [hatchPendingEgg, egg.id])
+    hatchLaidEgg(egg.id)
+    onClose()
+    onShowMessage('长按蛋拖到鸡窝孵化!', egg.x, egg.y - 60)
+  }, [hatchLaidEgg, egg.id, onClose, onShowMessage])
 
-  const eggBounce = Math.sin(animRef.current.time * 0.15) * 5
+  const eggBounce = Math.sin(animRef.current.time * 0.15) * 3
   const posX = egg.x
-  const posY = egg.y - 90
+  const posY = egg.y - 80
 
   // --- Draw functions ---
 
   const drawBackground = useCallback((g: Graphics) => {
     g.clear()
-    // Main panel with warm shadow
-    g.roundRect(-80, -50, 160, 100, 16).fill({ color: 0x000000, alpha: 0.1 })
-    g.roundRect(-82, -52, 160, 100, 16).fill({ color: 0xFFFAF0, alpha: 0.95 })
-    g.roundRect(-82, -52, 160, 100, 16).stroke({ color: 0xDEB887, width: 2.5 })
+    // Shadow
+    g.roundRect(-90, -45, 180, 90, 16).fill({ color: 0x000000, alpha: 0.1 })
+    // Main panel
+    g.roundRect(-92, -47, 180, 90, 16).fill({ color: 0xfffaf0, alpha: 0.95 })
+    g.roundRect(-92, -47, 180, 90, 16).stroke({ color: 0xdeb887, width: 2.5 })
     // Title bar
-    g.roundRect(-78, -48, 152, 22, 8).fill({ color: 0xFFF3CD, alpha: 0.8 })
+    g.roundRect(-88, -43, 172, 22, 8).fill({ color: 0xfff3cd, alpha: 0.8 })
   }, [])
 
   const drawEggIcon = useCallback((g: Graphics) => {
     g.clear()
-    // Egg with glow
-    g.circle(0, 0, 14).fill({ color: 0xFFD700, alpha: 0.15 })
-    g.ellipse(0, 0, 10, 14).fill(0xFFF8DC)
-    g.ellipse(0, 0, 10, 14).stroke({ color: 0xFFD700, width: 1.5 })
-    // Spots
-    g.circle(-3, -3, 2).fill({ color: 0xFFD700, alpha: 0.5 })
-    g.circle(3, 2, 1.5).fill({ color: 0xFFD700, alpha: 0.4 })
+    g.circle(0, 0, 12).fill({ color: 0xffd700, alpha: 0.15 })
+    g.ellipse(0, 0, 8, 12).fill(0xfff8dc)
+    g.ellipse(0, 0, 8, 12).stroke({ color: 0xffd700, width: 1.5 })
+    g.circle(-2, -2, 1.5).fill({ color: 0xffd700, alpha: 0.5 })
+    g.circle(2, 1, 1).fill({ color: 0xffd700, alpha: 0.4 })
   }, [])
 
   const drawSellButton = useCallback((g: Graphics) => {
     g.clear()
-    // Rounded rect button
-    g.roundRect(-30, -18, 60, 36, 10).fill({ color: 0xFFD700, alpha: 0.9 })
-    g.roundRect(-30, -18, 60, 36, 10).stroke({ color: 0xDAA520, width: 2 })
+    g.roundRect(-38, -18, 76, 36, 10).fill({ color: 0xffd700, alpha: 0.9 })
+    g.roundRect(-38, -18, 76, 36, 10).stroke({ color: 0xdaa520, width: 2 })
     // Coin icon
-    g.circle(0, -4, 8).fill(0xFFC107)
-    g.circle(0, -4, 8).stroke({ color: 0xE6A800, width: 1.5 })
-    g.circle(0, -4, 5).stroke({ color: 0xFFE082, width: 1, alpha: 0.6 })
+    g.circle(-16, -2, 7).fill(0xffc107)
+    g.circle(-16, -2, 7).stroke({ color: 0xe6a800, width: 1.5 })
+    g.circle(-16, -2, 4).stroke({ color: 0xffe082, width: 1, alpha: 0.6 })
   }, [])
 
   const drawHatchButton = useCallback((g: Graphics) => {
     g.clear()
-    // Rounded rect button
-    g.roundRect(-30, -18, 60, 36, 10).fill({ color: 0x81C784, alpha: 0.9 })
-    g.roundRect(-30, -18, 60, 36, 10).stroke({ color: 0x4CAF50, width: 2 })
-    // Egg cracking icon
-    g.ellipse(0, -5, 7, 10).fill(0xFFF8DC)
-    g.ellipse(0, -5, 7, 10).stroke({ color: 0xBDBDBD, width: 1 })
-    // Crack line
-    g.moveTo(-5, -5).lineTo(-1, -3).lineTo(-4, 0).lineTo(0, 2).stroke({ color: 0x795548, width: 1 })
+    g.roundRect(-38, -18, 76, 36, 10).fill({ color: 0x81c784, alpha: 0.9 })
+    g.roundRect(-38, -18, 76, 36, 10).stroke({ color: 0x4caf50, width: 2 })
+    // Nest icon (simple arc)
+    g.arc(0, 2, 10, 0, Math.PI).fill(0x8d6e63)
+    // Egg in nest
+    g.ellipse(0, -2, 5, 7).fill(0xfff8dc)
+    g.ellipse(0, -2, 5, 7).stroke({ color: 0xbdbdbd, width: 1 })
   }, [])
 
   return (
-    <pixiContainer x={posX} y={posY} zIndex={100}>
+    <pixiContainer x={posX} y={posY + eggBounce} zIndex={200}>
       {/* Background panel */}
       <pixiGraphics draw={drawBackground} />
 
       {/* Title text */}
       <pixiText
-        text="下蛋啦！"
+        text="收获鸡蛋!"
         x={-2}
-        y={-42}
+        y={-37}
         anchor={0.5}
-        style={{ fontSize: 13, fontWeight: 'bold', fill: 0xD4890E, fontFamily: 'sans-serif' }}
+        style={{ fontSize: 13, fontWeight: 'bold', fill: 0xd4890e, fontFamily: 'sans-serif' }}
       />
 
       {/* Bouncing egg icon */}
-      <pixiGraphics draw={drawEggIcon} x={0} y={-18 + eggBounce} />
+      <pixiGraphics draw={drawEggIcon} x={-2} y={-14 + eggBounce} />
 
       {/* Sell button (left) */}
       <pixiContainer
-        x={-38}
-        y={22}
+        x={-46}
+        y={20}
         eventMode="static"
         cursor="pointer"
         onPointerDown={handleSell}
@@ -120,28 +115,28 @@ export function EggChoice({ egg }: EggChoiceProps) {
         <pixiGraphics draw={drawSellButton} />
         <pixiText
           text={`+${egg.reward}`}
-          x={0}
-          y={10}
+          x={6}
+          y={-2}
           anchor={0.5}
-          style={{ fontSize: 11, fontWeight: 'bold', fill: 0x8B6914, fontFamily: 'sans-serif' }}
+          style={{ fontSize: 12, fontWeight: 'bold', fill: 0x8b6914, fontFamily: 'sans-serif' }}
         />
       </pixiContainer>
 
       {/* Hatch button (right) */}
       <pixiContainer
-        x={38}
-        y={22}
+        x={46}
+        y={20}
         eventMode="static"
         cursor="pointer"
         onPointerDown={handleHatch}
       >
         <pixiGraphics draw={drawHatchButton} />
         <pixiText
-          text="孵化"
+          text="放鸡窝"
           x={0}
-          y={10}
+          y={-2}
           anchor={0.5}
-          style={{ fontSize: 11, fontWeight: 'bold', fill: 0x1B5E20, fontFamily: 'sans-serif' }}
+          style={{ fontSize: 11, fontWeight: 'bold', fill: 0x1b5e20, fontFamily: 'sans-serif' }}
         />
       </pixiContainer>
     </pixiContainer>
