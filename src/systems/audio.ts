@@ -6,7 +6,7 @@
 let ctx: AudioContext | null = null
 let masterGain: GainNode | null = null
 let _muted = localStorage.getItem('linda-muted') === 'true'
-let _volume = 0.35
+let _volume = 0.6
 
 function getCtx(): AudioContext {
   if (!ctx) {
@@ -17,9 +17,22 @@ function getCtx(): AudioContext {
   }
   // Resume if suspended (browser autoplay policy)
   if (ctx.state === 'suspended') {
-    ctx.resume()
+    ctx.resume().catch(() => {})
   }
   return ctx
+}
+
+// Eagerly try to unlock audio on first user interaction
+if (typeof window !== 'undefined') {
+  const unlock = () => {
+    getCtx()
+    window.removeEventListener('pointerdown', unlock)
+    window.removeEventListener('touchstart', unlock)
+    window.removeEventListener('click', unlock)
+  }
+  window.addEventListener('pointerdown', unlock, { once: true })
+  window.addEventListener('touchstart', unlock, { once: true })
+  window.addEventListener('click', unlock, { once: true })
 }
 
 function getMaster(): GainNode {
