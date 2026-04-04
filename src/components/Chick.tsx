@@ -389,9 +389,33 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
           g.circle(-r * 0.4, r * 0.3, 1.5).fill({ color: 0xFFFFFF, alpha: 0.7 })
         }
 
-        // Eye
+        // Eye — sleeping chicks get closed eyes (horizontal line)
         const eyeX = dir * r * 0.3
-        g.circle(eyeX, -r * 0.25, r * 0.15).fill(appearance.eyeColor)
+        const isSleeping = data.currentAction === 'sleeping'
+        if (isSleeping) {
+          // Closed eye: small horizontal line
+          g.moveTo(eyeX - r * 0.12, -r * 0.25)
+            .lineTo(eyeX + r * 0.12, -r * 0.25)
+            .stroke({ color: appearance.eyeColor, width: 1.5 })
+        } else {
+          g.circle(eyeX, -r * 0.25, r * 0.15).fill(appearance.eyeColor)
+          // Tiny eye highlight for life
+          g.circle(eyeX + r * 0.05, -r * 0.3, r * 0.05).fill({ color: 0xffffff, alpha: 0.8 })
+        }
+
+        // Blush circles on cheeks for happy chicks
+        if (data.mood === 'happy' && !isSleeping) {
+          const blushX = dir * r * 0.55
+          g.circle(blushX, -r * 0.05, r * 0.14).fill({ color: 0xff8fa0, alpha: 0.35 })
+        }
+
+        // Baby feather tufts (fluffy tufts on top for baby chicks)
+        if (isBaby) {
+          // 3 small feather lines on top of head
+          g.moveTo(-2, -r - 1).lineTo(-4, -r - 8).stroke({ color: appearance.bodyColor, width: 2 })
+          g.moveTo(1, -r - 1).lineTo(2, -r - 10).stroke({ color: appearance.bodyColor, width: 1.8 })
+          g.moveTo(4, -r - 1).lineTo(7, -r - 7).stroke({ color: appearance.bodyColor, width: 1.5 })
+        }
 
         // Beak
         const beakBaseX = dir * r * 0.7
@@ -409,7 +433,7 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
         g.rect(r * 0.1, r * 0.9, footW, footH).fill(appearance.beakColor)
       }
     },
-    [isEgg, isHatching, data.direction, breed, bodyRadius, appearance],
+    [isEgg, isHatching, data.direction, data.currentAction, data.mood, breed, isBaby, bodyRadius, appearance],
   )
 
   // Egg-laying floating text
@@ -515,9 +539,13 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
     ? smoothPosRef.current.y + heldBobRef.current
     : data.y + bounceOffsetRef.current + dropBounceRef.current
   const finalScale = isHeld ? scale * 1.2 : scale
+  // Walking tilt: slight lean in walking direction
+  const walkTilt = (!isEgg && !isHeld && data.currentAction === 'walking')
+    ? (data.direction === 'right' ? 0.08 : -0.08)
+    : 0
   const finalRotation = isHeld
     ? heldNuzzleRef.current
-    : wobbleRef.current.rotation + reluctantRotRef.current
+    : wobbleRef.current.rotation + reluctantRotRef.current + walkTilt
 
   // Draw ground shadow at original position when held
   const drawHeldShadow = useCallback(
