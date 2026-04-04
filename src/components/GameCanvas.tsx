@@ -50,8 +50,6 @@ function isInsidePond(x: number, y: number): boolean {
 
 /** Shared held chick id so GameLoop can skip AI for held chicks */
 let _heldChickId: string | null = null
-/** Set of chick IDs that the player has tapped to follow the cursor */
-const _followingChickIds = new Set<string>()
 
 /** Returns a random x position within the grass area */
 export function randomGrassX(width: number): number {
@@ -170,28 +168,7 @@ function GameLoop() {
         }
       }
 
-      // Cursor-following: only chicks the player has tapped to "summon"
-      if (cursorOnGrass && _followingChickIds.has(chick.id)) {
-        const dx = cursorX - chick.x
-        const dy = cursorY - chick.y
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist > 15) {
-          const speed = 1.0 * delta
-          updateChick(chick.id, {
-            x: chick.x + (dx / dist) * speed,
-            y: chick.y + (dy / dist) * speed,
-            currentAction: 'walking',
-            targetX: cursorX,
-            targetY: cursorY,
-            direction: dx > 0 ? 'right' : 'left',
-          })
-          continue
-        } else {
-          // Close enough, just idle near cursor
-          updateChick(chick.id, { currentAction: 'idle' })
-          continue
-        }
-      }
+      // No automatic cursor following — chicks live their own lives
 
       const { pondSplashTime } = useClickEffectsStore.getState()
       const updates = updateChickAI(chick, delta, latestChicks, gameTime, pondSplashTime)
@@ -323,9 +300,6 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
 
   const grassY = height * GRASS_RATIO
 
-  // Double-click detection ref
-  const lastClickRef = useRef<{ id: string; time: number }>({ id: '', time: 0 })
-
   const handleChickClick = useCallback(
     (data: ChickData) => {
       // Don't interact with eggs
@@ -334,32 +308,10 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
         return
       }
 
-      const now = Date.now()
-      const lastClick = lastClickRef.current
-
-      // Double-click detection: same chick within 400ms
-      if (lastClick.id === data.id && now - lastClick.time < 400) {
-        // === DOUBLE CLICK: stop following ===
-        _followingChickIds.delete(data.id)
-        updateChick(data.id, { currentAction: 'idle' })
-        // Show a "bye" effect
-        addEffect('cloud', data.x, data.y - 30)
-        lastClickRef.current = { id: '', time: 0 }
-        return
-      }
-
-      // === SINGLE CLICK: start following + pet ===
-      lastClickRef.current = { id: data.id, time: now }
-
       selectChick(data.id)
       petChick(data.id)
       chirp()
-
-      // Toggle follow: if not following, start following
-      if (!_followingChickIds.has(data.id)) {
-        _followingChickIds.add(data.id)
-        addEffect('heart', data.x, data.y - 20)
-      }
+      addEffect('heart', data.x, data.y - 20)
 
       // Nearby chicks turn to look
       const allChicks = useGameStore.getState().chicks
