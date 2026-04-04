@@ -336,12 +336,12 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
       </Application>
       {currentGame === 'hideAndSeek' && (
         <GameOverlay
-          title="Hide & Seek"
+          title="躲猫猫"
           phase={hideAndSeek.phase}
           timeLeft={hideAndSeek.timeLeft}
           score={hideAndSeek.score}
           maxScore={hideAndSeek.totalChicks}
-          instructions="Find the hidden chicks peeking out from behind bushes!"
+          instructions="找到躲在灌木丛后面偷看的小鸡！"
           onStart={hideAndSeek.handleStart}
           onPlayAgain={hideAndSeek.handlePlayAgain}
           onExit={hideAndSeek.handleExit}

@@ -595,13 +595,13 @@ export function FetchOverlay({
         onClick={onStart}
       >
         <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 12 }}>
-          Fetch!
+          丢球捡回！
         </div>
         <div style={{ fontSize: 16, marginBottom: 8, opacity: 0.85 }}>
-          Click and drag to throw the ball. Your chick will fetch it!
+          拖拽瞄准，松开投掷！小鸡会帮你捡回来！
         </div>
         <div style={{ fontSize: 14, marginBottom: 8, opacity: 0.7 }}>
-          Farther throws = more points. Consecutive fetches multiply your score!
+          投得越远分数越高，连续捡回可以获得倍数加成！
         </div>
         <div
           style={{
@@ -613,7 +613,7 @@ export function FetchOverlay({
             cursor: 'pointer',
           }}
         >
-          Ready? Click to start!
+          准备好了吗？点击开始！
         </div>
       </div>
     )
@@ -641,16 +641,16 @@ export function FetchOverlay({
             borderRadius: 14,
           }}
         >
-          <div style={{ fontSize: 20, fontWeight: 'bold' }}>Fetch!</div>
+          <div style={{ fontSize: 20, fontWeight: 'bold' }}>丢球捡回！</div>
           <div style={{ fontSize: 18 }}>
-            Round: <span style={{ fontWeight: 'bold' }}>{round + 1}/{MAX_ROUNDS}</span>
+            第{round + 1}轮/共{MAX_ROUNDS}轮
           </div>
           <div style={{ fontSize: 18 }}>
-            Score: <span style={{ fontWeight: 'bold', color: '#ffd93d' }}>{totalScore}</span>
+            分数：<span style={{ fontWeight: 'bold', color: '#ffd93d' }}>{totalScore}</span>
           </div>
           {streak > 1 && (
             <div style={{ fontSize: 16, color: '#ff9800' }}>
-              {streak}x streak!
+              {streak}x 连击！
             </div>
           )}
         </div>
@@ -673,7 +673,7 @@ export function FetchOverlay({
               fontSize: 15,
             }}
           >
-            Click and drag to aim, release to throw!
+            拖拽瞄准，松开投掷！
           </div>
         )}
 
@@ -705,17 +705,17 @@ export function FetchOverlay({
   return (
     <div style={{ ...overlayBase, background: 'rgba(0,0,0,0.6)' }}>
       <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 8 }}>
-        Game Over!
+        游戏结束！
       </div>
       <div style={{ fontSize: 24, marginBottom: 4 }}>
-        Total Score: {totalScore}
+        总分：{totalScore}
       </div>
       <div style={{ fontSize: 18, opacity: 0.85, marginBottom: 4 }}>
-        Coins earned: +{coinsEarned}
+        获得金币：+{coinsEarned}
       </div>
       {streak >= MAX_ROUNDS && (
         <div style={{ fontSize: 16, color: '#ffd93d', marginBottom: 8 }}>
-          Perfect streak! Amazing fetching!
+          完美连击！太厉害了！
         </div>
       )}
       <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
@@ -723,13 +723,13 @@ export function FetchOverlay({
           onClick={onPlayAgain}
           style={{ ...btnStyle, background: '#4caf50', color: '#fff' }}
         >
-          Play Again
+          再来一次
         </button>
         <button
           onClick={onExit}
           style={{ ...btnStyle, background: '#78909c', color: '#fff' }}
         >
-          Exit
+          退出
         </button>
       </div>
     </div>

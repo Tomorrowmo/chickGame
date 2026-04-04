@@ -3,11 +3,13 @@ import { GameCanvas, randomGrassX, randomGrassY } from './components/GameCanvas'
 import { TopBar } from './components/ui/TopBar'
 import { ChickInfoPanel } from './components/ui/ChickInfoPanel'
 import { Toolbar } from './components/ui/Toolbar'
+import { Tutorial } from './components/ui/Tutorial'
 import { useGameStore } from './store/gameStore'
 import './App.css'
 
 const GAME_WIDTH = 960
 const GAME_HEIGHT = 640
+const TOOLBAR_HEIGHT = 72
 const PADDING = 24
 
 function useResponsiveScale() {
@@ -17,7 +19,8 @@ function useResponsiveScale() {
     function updateScale() {
       const maxW = window.innerWidth - PADDING * 2
       const maxH = window.innerHeight - PADDING * 2
-      const s = Math.min(maxW / GAME_WIDTH, maxH / GAME_HEIGHT, 1)
+      const totalHeight = GAME_HEIGHT + TOOLBAR_HEIGHT
+      const s = Math.min(maxW / GAME_WIDTH, maxH / totalHeight, 1)
       setScale(s)
     }
     updateScale()
@@ -49,7 +52,7 @@ function App() {
         <div className="loading-screen">
           <div className="loading-chick">🐣</div>
           <div className="loading-text">小鸡们正在准备中...</div>
-          <div className="loading-subtext">The chicks are getting ready...</div>
+          <div className="loading-subtext">小鸡宠物乐园加载中...</div>
         </div>
       </div>
     )
@@ -57,17 +60,25 @@ function App() {
 
   return (
     <div className="app-container">
+      <Tutorial />
       <div
-        className="game-wrapper"
+        className="game-outer"
         style={{
           width: GAME_WIDTH,
-          height: GAME_HEIGHT,
           transform: `scale(${scale})`,
         }}
       >
-        <GameCanvas width={GAME_WIDTH} height={GAME_HEIGHT} />
-        <TopBar />
-        <ChickInfoPanel />
+        <div
+          className="game-wrapper"
+          style={{
+            width: GAME_WIDTH,
+            height: GAME_HEIGHT,
+          }}
+        >
+          <GameCanvas width={GAME_WIDTH} height={GAME_HEIGHT} />
+          <TopBar />
+          <ChickInfoPanel />
+        </div>
         <Toolbar onAddEgg={handleAddEgg} />
       </div>
     </div>

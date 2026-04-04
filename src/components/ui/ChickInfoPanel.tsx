@@ -9,11 +9,24 @@ const RARITY_COLORS: Record<Rarity, string> = {
   rare: '#ffd54f',
 }
 
+const RARITY_LABELS: Record<Rarity, string> = {
+  common: '普通',
+  special: '特殊',
+  rare: '稀有',
+}
+
 const MOOD_COLORS: Record<Mood, string> = {
   happy: '#66bb6a',
   normal: '#ffee58',
   bored: '#ffa726',
   angry: '#ef5350',
+}
+
+const MOOD_LABELS: Record<Mood, string> = {
+  happy: '开心',
+  normal: '普通',
+  bored: '无聊',
+  angry: '生气',
 }
 
 const STAGE_ICONS: Record<LifeStage, string> = {
@@ -22,6 +35,35 @@ const STAGE_ICONS: Record<LifeStage, string> = {
   baby: '🐣',
   juvenile: '🐥',
   adult: '🐔',
+}
+
+const STAGE_LABELS: Record<LifeStage, string> = {
+  egg: '蛋',
+  hatching: '破壳中',
+  baby: '幼鸡',
+  juvenile: '少年鸡',
+  adult: '成年鸡',
+}
+
+const BREED_LABELS: Record<string, string> = {
+  white: '小白',
+  yellow: '小黄',
+  brown: '小棕',
+  spotted: '花斑',
+  striped: '条纹',
+  colorful: '彩色',
+  golden: '金鸡',
+  rainbow: '彩虹',
+  crystal: '水晶',
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  idle: '发呆',
+  walking: '散步',
+  eating: '吃东西',
+  sleeping: '睡觉',
+  playing: '玩耍',
+  chasing: '追逐',
 }
 
 function StatBar({
@@ -78,7 +120,7 @@ export function ChickInfoPanel() {
   const chick = chicks.find((c) => c.id === selectedChickId)
   if (!chick) return null
 
-  const displayName = chick.name || chick.breed
+  const displayName = chick.name || BREED_LABELS[chick.breed] || chick.breed
   const rarityColor = RARITY_COLORS[chick.rarity]
   const moodColor = MOOD_COLORS[chick.mood]
   const stageIcon = STAGE_ICONS[chick.stage]
@@ -147,7 +189,7 @@ export function ChickInfoPanel() {
       </div>
       {chick.name && (
         <div style={{ fontSize: 12, color: '#8d6e63', marginBottom: 4 }}>
-          {chick.breed}
+          {BREED_LABELS[chick.breed] || chick.breed}
         </div>
       )}
 
@@ -162,10 +204,9 @@ export function ChickInfoPanel() {
           padding: '2px 8px',
           borderRadius: 8,
           marginBottom: 8,
-          textTransform: 'uppercase',
         }}
       >
-        {chick.rarity}
+        {RARITY_LABELS[chick.rarity]}
       </div>
 
       {/* Stage */}
@@ -179,21 +220,21 @@ export function ChickInfoPanel() {
         }}
       >
         <span>{stageIcon}</span>
-        <span style={{ textTransform: 'capitalize' }}>{chick.stage}</span>
+        <span>{STAGE_LABELS[chick.stage]}</span>
       </div>
 
       {/* Mood bar */}
       <StatBar
-        label={`Mood: ${chick.mood}`}
+        label={`心情：${MOOD_LABELS[chick.mood]}`}
         value={chick.moodValue}
         color={moodColor}
       />
 
       {/* Hunger bar */}
-      <StatBar label="Hunger" value={chick.hunger} color={hungerColor} />
+      <StatBar label="饥饿度" value={chick.hunger} color={hungerColor} />
 
       {/* Growth bar */}
-      <StatBar label="Growth" value={chick.growthProgress} color="#42a5f5" />
+      <StatBar label="成长" value={chick.growthProgress} color="#42a5f5" />
 
       {/* Action */}
       <div
@@ -202,10 +243,9 @@ export function ChickInfoPanel() {
           color: '#8d6e63',
           marginTop: 4,
           fontStyle: 'italic',
-          textTransform: 'capitalize',
         }}
       >
-        {chick.currentAction}
+        {ACTION_LABELS[chick.currentAction] || chick.currentAction}
       </div>
     </div>
   )

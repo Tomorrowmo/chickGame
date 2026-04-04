@@ -7,9 +7,14 @@
   overflow: hidden;
 }
 
+.game-outer {
+  display: flex;
+  flex-direction: column;
+  transform-origin: center center;
+}
+
 .game-wrapper {
   position: relative;
-  transform-origin: center center;
 }
 
 /* Loading screen */

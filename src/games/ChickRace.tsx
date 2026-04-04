@@ -436,10 +436,10 @@ export function ChickRaceOverlay({
         onClick={onStart}
       >
         <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 12 }}>
-          Chick Race
+          小鸡赛跑
         </div>
         <div style={{ fontSize: 16, marginBottom: 8, opacity: 0.85 }}>
-          Pick your chick and click rapidly to boost its speed!
+          选择你的小鸡，疯狂点击加速！
         </div>
         <div
           style={{
@@ -451,7 +451,7 @@ export function ChickRaceOverlay({
             cursor: 'pointer',
           }}
         >
-          Ready? Click to start!
+          准备好了吗？点击开始！
         </div>
       </div>
     )
@@ -461,7 +461,7 @@ export function ChickRaceOverlay({
     return (
       <div style={{ ...overlayBase, background: 'rgba(0,0,0,0.45)' }}>
         <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 16 }}>
-          Pick Your Chick!
+          选择你的小鸡！
         </div>
         <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
           {LANE_NAMES.map((name, i) => (
@@ -494,7 +494,7 @@ export function ChickRaceOverlay({
           onClick={onConfirmSelection}
           style={{ ...btnStyle, background: '#4caf50', color: '#fff' }}
         >
-          Go!
+          出发！
         </button>
       </div>
     )
@@ -535,37 +535,30 @@ export function ChickRaceOverlay({
           fontWeight: 'bold',
         }}
       >
-        Click rapidly to boost your chick!
+        疯狂点击加速！
       </div>
     )
   }
 
   if (phase === 'ended') {
-    const placeText =
-      playerPlace === 1
-        ? '1st'
-        : playerPlace === 2
-          ? '2nd'
-          : playerPlace === 3
-            ? '3rd'
-            : `${playerPlace}th`
+    const placeText = `第${playerPlace}名`
 
     return (
       <div style={{ ...overlayBase, background: 'rgba(0,0,0,0.6)' }}>
         <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 8 }}>
-          Race Over!
+          比赛结束！
         </div>
         <div style={{ fontSize: 24, marginBottom: 4 }}>
-          Your chick came in {placeText} place!
+          你的小鸡获得了{placeText}！
         </div>
         {coinsEarned > 0 && (
           <div style={{ fontSize: 18, opacity: 0.85, marginBottom: 4 }}>
-            Coins earned: +{coinsEarned}
+            获得金币：+{coinsEarned}
           </div>
         )}
         {playerPlace === 1 && (
           <div style={{ fontSize: 16, color: '#ffd93d', marginBottom: 8 }}>
-            Winner winner, chicken dinner!
+            大吉大利，今晚吃鸡！
           </div>
         )}
         <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
@@ -573,13 +566,13 @@ export function ChickRaceOverlay({
             onClick={onPlayAgain}
             style={{ ...btnStyle, background: '#4caf50', color: '#fff' }}
           >
-            Play Again
+            再来一次
           </button>
           <button
             onClick={onExit}
             style={{ ...btnStyle, background: '#78909c', color: '#fff' }}
           >
-            Exit
+            退出
           </button>
         </div>
       </div>

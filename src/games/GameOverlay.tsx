@@ -84,7 +84,7 @@ export function GameOverlay({
             cursor: 'pointer',
           }}
         >
-          Ready? Click to start!
+          准备好了吗？点击开始！
         </div>
       </div>
     )
@@ -112,10 +112,10 @@ export function GameOverlay({
       >
         <div style={{ fontSize: 20, fontWeight: 'bold' }}>{title}</div>
         <div style={{ fontSize: 18 }}>
-          Time: <span style={{ color: timeLeft <= 5 ? '#ff6b6b' : '#ffd93d', fontWeight: 'bold' }}>{timeLeft}s</span>
+          时间：<span style={{ color: timeLeft <= 5 ? '#ff6b6b' : '#ffd93d', fontWeight: 'bold' }}>{timeLeft}s</span>
         </div>
         <div style={{ fontSize: 18 }}>
-          Found: <span style={{ fontWeight: 'bold' }}>{score}/{maxScore}</span>
+          已找到：<span style={{ fontWeight: 'bold' }}>{score}/{maxScore}</span>
         </div>
       </div>
     )
@@ -131,17 +131,17 @@ export function GameOverlay({
       }}
     >
       <div style={{ fontSize: 36, fontWeight: 'bold', marginBottom: 8 }}>
-        Game Over!
+        游戏结束！
       </div>
       <div style={{ fontSize: 22, marginBottom: 4 }}>
-        You found {score} of {maxScore} chicks!
+        你找到了 {score} / {maxScore} 只小鸡！
       </div>
       <div style={{ fontSize: 18, opacity: 0.8, marginBottom: 4 }}>
-        Coins earned: +{score * 10}{allFound ? ' +20 bonus!' : ''}
+        获得金币：+{score * 10}{allFound ? ' +20 奖励！' : ''}
       </div>
       {allFound && (
         <div style={{ fontSize: 16, color: '#ffd93d', marginBottom: 8 }}>
-          Perfect! All chicks found!
+          完美！找到了所有小鸡！
         </div>
       )}
       <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
@@ -153,7 +153,7 @@ export function GameOverlay({
             color: '#fff',
           }}
         >
-          Play Again
+          再来一次
         </button>
         <button
           onClick={onExit}
@@ -163,7 +163,7 @@ export function GameOverlay({
             color: '#fff',
           }}
         >
-          Exit
+          退出
         </button>
       </div>
     </div>

@@ -75,7 +75,7 @@ export function TopBar() {
           justifyContent: 'center',
           WebkitTapHighlightColor: 'transparent',
         }}
-        title={muted ? 'Unmute' : 'Mute'}
+        title={muted ? '取消静音' : '静音'}
       >
         {muted ? '🔇' : '🔊'}
       </span>
@@ -88,7 +88,7 @@ export function TopBar() {
             marginLeft: 4,
           }}
         >
-          Saving...
+          保存中...
         </span>
       )}
     </div>

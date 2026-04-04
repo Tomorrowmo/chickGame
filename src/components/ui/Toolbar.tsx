@@ -5,9 +5,9 @@ import type { FoodType } from '../../store/gameStore'
 const fontFamily = '"Comic Sans MS", "Chalkboard SE", cursive'
 
 const FOOD_OPTIONS: { type: FoodType; emoji: string; label: string }[] = [
-  { type: 'grain', emoji: '🌾', label: 'Grain' },
-  { type: 'worm', emoji: '🐛', label: 'Worm' },
-  { type: 'treat', emoji: '🍬', label: 'Treat' },
+  { type: 'grain', emoji: '🌾', label: '谷物' },
+  { type: 'worm', emoji: '🐛', label: '虫子' },
+  { type: 'treat', emoji: '🍬', label: '糖果' },
 ]
 
 interface ToolbarProps {
@@ -80,18 +80,14 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
   return (
     <div
       style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        position: 'relative',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'flex-end',
+        alignItems: 'center',
         gap: 8,
         padding: '10px 16px',
-        background: 'rgba(255, 248, 225, 0.85)',
+        background: 'rgba(255, 248, 225, 0.95)',
         borderTop: '2px solid rgba(245, 197, 66, 0.5)',
-        borderRadius: '16px 16px 0 0',
         boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.1)',
         zIndex: 10,
         fontFamily,
@@ -106,7 +102,7 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
         }}
       >
         <span style={{ fontSize: 22 }}>🥚</span>
-        <span style={{ fontSize: 11 }}>Add Egg</span>
+        <span style={{ fontSize: 11 }}>添加蛋</span>
       </button>
 
       {/* Divider */}
@@ -177,7 +173,7 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
         }}
       >
         <span style={{ fontSize: 22 }}>🧹</span>
-        <span style={{ fontSize: 11 }}>Clean</span>
+        <span style={{ fontSize: 11 }}>清洁</span>
       </button>
 
       {/* Play button */}
@@ -193,12 +189,12 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
           }}
           title={
             !canPlay && playableChicks < 3
-              ? 'Need at least 3 hatched chicks to play'
+              ? '需要至少3只孵化的小鸡'
               : undefined
           }
         >
           <span style={{ fontSize: 22 }}>🎮</span>
-          <span style={{ fontSize: 11 }}>Play</span>
+          <span style={{ fontSize: 11 }}>游戏</span>
         </button>
         {showGameMenu && (
           <div
@@ -231,7 +227,7 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
               }}
             >
               <span style={{ fontSize: 18 }}>🐣</span>
-              <span style={{ fontSize: 12 }}>Hide & Seek</span>
+              <span style={{ fontSize: 12 }}>躲猫猫</span>
             </button>
             <button
               onClick={() => {
@@ -247,7 +243,7 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
               }}
             >
               <span style={{ fontSize: 18 }}>🏁</span>
-              <span style={{ fontSize: 12 }}>Chick Race</span>
+              <span style={{ fontSize: 12 }}>小鸡赛跑</span>
             </button>
             <button
               onClick={() => {
@@ -263,7 +259,7 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
               }}
             >
               <span style={{ fontSize: 18 }}>🎾</span>
-              <span style={{ fontSize: 12 }}>Fetch</span>
+              <span style={{ fontSize: 12 }}>丢球捡回</span>
             </button>
           </div>
         )}
@@ -287,7 +283,7 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
             whiteSpace: 'nowrap',
           }}
         >
-          Click grass to feed (Esc to cancel)
+          点击草地喂食 (Esc取消)
         </div>
       )}
     </div>
