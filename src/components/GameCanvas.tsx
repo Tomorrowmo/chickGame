@@ -34,7 +34,7 @@ interface GameCanvasProps {
 }
 
 const GRASS_RATIO = 0.6
-const CURSOR_ATTRACT_RADIUS = 100
+// Cursor following is now player-controlled: click to follow, double-click to stop
 
 /** Pond ellipse for click detection (matches Pond.tsx defaults) */
 const POND_X = 1050
@@ -50,6 +50,8 @@ function isInsidePond(x: number, y: number): boolean {
 
 /** Shared held chick id so GameLoop can skip AI for held chicks */
 let _heldChickId: string | null = null
+/** Set of chick IDs that the player has tapped to follow the cursor */
+const _followingChickIds = new Set<string>()
 
 /** Returns a random x position within the grass area */
 export function randomGrassX(width: number): number {
@@ -96,10 +98,6 @@ function GameLoop() {
 
     // Get held chick id (skip AI for held chicks)
     const heldId = _heldChickId
-
-    // Track how many chicks are following the cursor this tick (max 2)
-    let cursorFollowers = 0
-    const MAX_CURSOR_FOLLOWERS = 2
 
     // Run AI for each chick
     for (const chick of latestChicks) {
@@ -172,22 +170,26 @@ function GameLoop() {
         }
       }
 
-      // Cursor-following: extremely rare, max 1 chick, only baby chicks are curious
-      if (cursorOnGrass && cursorFollowers < 1 && Math.random() < 0.0003) {
-        if (chick.stage === 'baby' && chick.mood === 'happy') {
-          const dx = cursorX - chick.x
-          const dy = cursorY - chick.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 80 && dist > 10) {
-            updateChick(chick.id, {
-              currentAction: 'walking',
-              targetX: cursorX,
-              targetY: cursorY,
-              direction: dx > 0 ? 'right' : 'left',
-            })
-            cursorFollowers++
-            continue
-          }
+      // Cursor-following: only chicks the player has tapped to "summon"
+      if (cursorOnGrass && _followingChickIds.has(chick.id)) {
+        const dx = cursorX - chick.x
+        const dy = cursorY - chick.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist > 15) {
+          const speed = 1.0 * delta
+          updateChick(chick.id, {
+            x: chick.x + (dx / dist) * speed,
+            y: chick.y + (dy / dist) * speed,
+            currentAction: 'walking',
+            targetX: cursorX,
+            targetY: cursorY,
+            direction: dx > 0 ? 'right' : 'left',
+          })
+          continue
+        } else {
+          // Close enough, just idle near cursor
+          updateChick(chick.id, { currentAction: 'idle' })
+          continue
         }
       }
 
@@ -320,16 +322,45 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
 
   const grassY = height * GRASS_RATIO
 
+  // Double-click detection ref
+  const lastClickRef = useRef<{ id: string; time: number }>({ id: '', time: 0 })
+
   const handleChickClick = useCallback(
     (data: ChickData) => {
+      // Don't interact with eggs
+      if (data.stage === 'egg' || data.stage === 'hatching') {
+        selectChick(data.id)
+        return
+      }
+
+      const now = Date.now()
+      const lastClick = lastClickRef.current
+
+      // Double-click detection: same chick within 400ms
+      if (lastClick.id === data.id && now - lastClick.time < 400) {
+        // === DOUBLE CLICK: stop following ===
+        _followingChickIds.delete(data.id)
+        updateChick(data.id, { currentAction: 'idle' })
+        // Show a "bye" effect
+        addEffect('cloud', data.x, data.y - 30)
+        lastClickRef.current = { id: '', time: 0 }
+        return
+      }
+
+      // === SINGLE CLICK: start following + pet ===
+      lastClickRef.current = { id: data.id, time: now }
+
       selectChick(data.id)
       petChick(data.id)
       chirp()
 
-      // Spawn a heart effect at the chick position
-      addEffect('heart', data.x, data.y - 20)
+      // Toggle follow: if not following, start following
+      if (!_followingChickIds.has(data.id)) {
+        _followingChickIds.add(data.id)
+        addEffect('heart', data.x, data.y - 20)
+      }
 
-      // Nearby chicks turn to look at the clicked chick
+      // Nearby chicks turn to look
       const allChicks = useGameStore.getState().chicks
       for (const other of allChicks) {
         if (other.id === data.id) continue
