@@ -5,6 +5,8 @@ import { Background } from './Background'
 import { Chick } from './Chick'
 import { ClickEffects } from './ClickEffects'
 import { HatchEffect } from './HatchEffect'
+import { FeedButton } from './FeedButton'
+import { FoodParticles } from './FoodParticles'
 import { useGameStore } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
 import { updateChickAI } from '../systems/chickAI'
@@ -35,6 +37,9 @@ function randomGrassY(height: number): number {
 }
 
 /** Inner component that drives the game loop via useTick (must be inside <Application>) */
+const FOOD_DETECT_RADIUS = 200
+const FOOD_EAT_RADIUS = 10
+
 function GameLoop() {
   const chicks = useGameStore((s) => s.chicks)
   const tick = useGameStore((s) => s.tick)
@@ -48,10 +53,63 @@ function GameLoop() {
     // Read cursor state for attraction logic
     const { cursorX, cursorY, cursorOnGrass } = useClickEffectsStore.getState()
 
+    // Get food particles for chick-food interaction
+    const { foodParticles, removeFoodParticle, feedChickWithFood } =
+      useGameStore.getState()
+
     // Run AI for each chick
     for (const chick of chicks) {
+      if (chick.stage === 'egg' || chick.stage === 'hatching') continue
+
+      // Check for nearby food particles first
+      let chasingFood = false
+      if (foodParticles.length > 0) {
+        // Find closest uneaten food
+        let closestFood = null
+        let closestDist = Infinity
+        for (const food of foodParticles) {
+          if (food.eaten || food.scale <= 0) continue
+          const dx = food.x - chick.x
+          const dy = food.y - chick.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < FOOD_DETECT_RADIUS && dist < closestDist) {
+            closestDist = dist
+            closestFood = food
+          }
+        }
+
+        if (closestFood) {
+          if (closestDist < FOOD_EAT_RADIUS) {
+            // Chick reached food - eat it
+            feedChickWithFood(chick.id, closestFood.type)
+            removeFoodParticle(closestFood.id)
+            // Pecking motion: small y offset
+            updateChick(chick.id, {
+              currentAction: 'eating',
+            })
+          } else {
+            // Chase the food
+            const dx = closestFood.x - chick.x
+            const dy = closestFood.y - chick.y
+            const dist = closestDist
+            const speed = 1.5 * delta
+            updateChick(chick.id, {
+              x: chick.x + (dx / dist) * speed,
+              y: chick.y + (dy / dist) * speed,
+              targetX: closestFood.x,
+              targetY: closestFood.y,
+              direction: dx > 0 ? 'right' : 'left',
+              currentAction: 'chasing',
+            })
+          }
+          chasingFood = true
+        }
+      }
+
+      if (chasingFood) continue
+
       // Cursor-following: if cursor is on grass and chick is close, override target
-      if (cursorOnGrass && chick.stage !== 'egg' && chick.stage !== 'hatching') {
+      if (cursorOnGrass) {
         const dx = cursorX - chick.x
         const dy = cursorY - chick.y
         const dist = Math.sqrt(dx * dx + dy * dy)
@@ -88,6 +146,9 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   const selectChick = useGameStore((s) => s.selectChick)
   const petChick = useGameStore((s) => s.petChick)
   const updateChick = useGameStore((s) => s.updateChick)
+  const feedingMode = useGameStore((s) => s.feedingMode)
+  const selectedFood = useGameStore((s) => s.selectedFood)
+  const scatterFood = useGameStore((s) => s.scatterFood)
   const addEffect = useClickEffectsStore((s) => s.addEffect)
   const setCursor = useClickEffectsStore((s) => s.setCursor)
 
@@ -141,6 +202,12 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
       const x = pos.x
       const y = pos.y
 
+      // Feeding mode: scatter food on grass
+      if (feedingMode && selectedFood && y > grassY) {
+        scatterFood(selectedFood, x, y)
+        return
+      }
+
       if (y > grassY) {
         // Clicked on grass area: sprout a flower
         addEffect('flower', x, y)
@@ -150,7 +217,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
         addEffect(type, x, y)
       }
     },
-    [addEffect, grassY],
+    [addEffect, grassY, feedingMode, selectedFood, scatterFood],
   )
 
   /** Track cursor position for chick attraction */
@@ -163,7 +230,14 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   )
 
   return (
-    <div style={{ position: 'relative', width, height }}>
+    <div
+      style={{
+        position: 'relative',
+        width,
+        height,
+        cursor: feedingMode ? 'crosshair' : 'default',
+      }}
+    >
       <Application width={width} height={height} background="#87CEEB">
         <pixiContainer
           eventMode="static"
@@ -174,6 +248,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           <GameLoop />
           <Background width={width} height={height} />
           <ClickEffects />
+          <FoodParticles />
           {chicks.map((chick) => (
             <Chick
               key={chick.id}
@@ -192,6 +267,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           ))}
         </pixiContainer>
       </Application>
+      <FeedButton />
       <button
         onClick={handleAddEgg}
         style={{

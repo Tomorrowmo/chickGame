@@ -2,24 +2,67 @@ import { create } from 'zustand'
 import type { ChickData } from '../types/chick'
 import { createEgg } from './chickFactory'
 
+export type FoodType = 'grain' | 'worm' | 'treat'
+
+export interface FoodParticle {
+  id: string
+  type: FoodType
+  x: number
+  y: number
+  scale: number // 1 = full, shrinks as eaten
+  eaten: boolean
+}
+
+export const FOOD_COSTS: Record<FoodType, number> = {
+  grain: 5,
+  worm: 10,
+  treat: 20,
+}
+
+export const FOOD_EFFECTS: Record<FoodType, { hunger: number; growth: number; mood: number }> = {
+  grain: { hunger: 20, growth: 5, mood: 0 },
+  worm: { hunger: 30, growth: 10, mood: 0 },
+  treat: { hunger: 15, growth: 5, mood: 20 },
+}
+
+export const FOOD_COLORS: Record<FoodType, number> = {
+  grain: 0xdaa520,  // golden
+  worm: 0x8b4513,   // brown
+  treat: 0xff69b4,  // pink
+}
+
+let nextFoodId = 0
+
 interface GameState {
   chicks: ChickData[]
   coins: number
   selectedChickId: string | null
+  selectedFood: FoodType | null
+  feedingMode: boolean
+  foodParticles: FoodParticle[]
 
   // Actions
   addEgg: (x: number, y: number) => void
   selectChick: (id: string | null) => void
   updateChick: (id: string, updates: Partial<ChickData>) => void
   feedChick: (id: string) => void
+  feedChickWithFood: (id: string, foodType: FoodType) => void
   petChick: (id: string) => void
   tick: (delta: number) => void
+  setSelectedFood: (food: FoodType | null) => void
+  setFeedingMode: (mode: boolean) => void
+  scatterFood: (foodType: FoodType, x: number, y: number) => boolean
+  removeFoodParticle: (id: string) => void
+  shrinkFoodParticle: (id: string, amount: number) => void
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
   chicks: [],
   coins: 100,
   selectedChickId: null,
+  selectedFood: null,
+  feedingMode: false,
+  foodParticles: [],
 
   addEgg: (x, y) =>
     set((state) => ({
@@ -47,6 +90,23 @@ export const useGameStore = create<GameState>((set, get) => ({
           : c,
       ),
     })),
+
+  feedChickWithFood: (id, foodType) =>
+    set((state) => {
+      const effects = FOOD_EFFECTS[foodType]
+      return {
+        chicks: state.chicks.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                hunger: Math.min(100, c.hunger + effects.hunger),
+                growthProgress: Math.min(100, c.growthProgress + effects.growth),
+                moodValue: Math.min(100, c.moodValue + effects.mood),
+              }
+            : c,
+        ),
+      }
+    }),
 
   petChick: (id) =>
     set((state) => ({
@@ -89,4 +149,47 @@ export const useGameStore = create<GameState>((set, get) => ({
     })
     set({ chicks: updated })
   },
+
+  setSelectedFood: (food) =>
+    set({ selectedFood: food, feedingMode: food !== null }),
+
+  setFeedingMode: (mode) =>
+    set({ feedingMode: mode, selectedFood: mode ? get().selectedFood : null }),
+
+  scatterFood: (foodType, x, y) => {
+    const state = get()
+    const cost = FOOD_COSTS[foodType]
+    if (state.coins < cost) return false
+
+    const count = 5 + Math.floor(Math.random() * 4) // 5-8 particles
+    const particles: FoodParticle[] = []
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        id: `food-${nextFoodId++}`,
+        type: foodType,
+        x: x + (Math.random() - 0.5) * 60,
+        y: y + (Math.random() - 0.5) * 40,
+        scale: 1,
+        eaten: false,
+      })
+    }
+
+    set({
+      coins: state.coins - cost,
+      foodParticles: [...state.foodParticles, ...particles],
+    })
+    return true
+  },
+
+  removeFoodParticle: (id) =>
+    set((state) => ({
+      foodParticles: state.foodParticles.filter((f) => f.id !== id),
+    })),
+
+  shrinkFoodParticle: (id, amount) =>
+    set((state) => ({
+      foodParticles: state.foodParticles.map((f) =>
+        f.id === id ? { ...f, scale: Math.max(0, f.scale - amount) } : f,
+      ),
+    })),
 }))
