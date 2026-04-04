@@ -1,22 +1,13 @@
 .app-container {
+  width: 100vw;
+  height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  min-height: 100vh;
+  align-items: center;
   background: #222;
   margin: 0;
   padding: 0;
   overflow: hidden;
-}
-
-.game-outer {
-  position: relative;
-}
-
-.game-scaler {
-  position: absolute;
-  top: 0;
-  left: 0;
 }
 
 .game-wrapper {
