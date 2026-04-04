@@ -2,6 +2,11 @@ import { useCallback, useState } from 'react'
 import { Application, extend, useTick } from '@pixi/react'
 import { Container, Graphics, Text } from 'pixi.js'
 import { Background } from './Background'
+import { Clouds } from './scene/Cloud'
+import { Pond } from './scene/Pond'
+import { Bushes } from './scene/Bush'
+import { Fence } from './scene/Fence'
+import { Flowers } from './scene/Flowers'
 import { Chick } from './Chick'
 import { ClickEffects } from './ClickEffects'
 import { HatchEffect } from './HatchEffect'
@@ -241,6 +246,11 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
         >
           <GameLoop />
           <Background width={width} height={height} />
+          <Clouds />
+          <Pond />
+          <Fence width={width} />
+          <Flowers />
+          <Bushes />
           <ClickEffects />
           <FoodParticles />
           {chicks.map((chick) => (
