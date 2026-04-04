@@ -23,7 +23,7 @@ import { GameOverlay } from '../games/GameOverlay'
 import { useGameStore, type PlacedDecoration } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
 import { updateChickAI } from '../systems/chickAI'
-import { chirp, feed, hatch, splash as splashSound } from '../systems/audio'
+import { chirp, feed, hatch, pop, splash as splashSound } from '../systems/audio'
 import type { ChickData } from '../types/chick'
 import type { FederatedPointerEvent } from 'pixi.js'
 
@@ -304,9 +304,13 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
 
   const handleChickClick = useCallback(
     (data: ChickData) => {
-      // Don't interact with eggs
+      // Eggs: tap to hear a sound + show hint
       if (data.stage === 'egg' || data.stage === 'hatching') {
         selectChick(data.id)
+        pop()
+        if (!data.inCoop) {
+          showCoopMessage('长按拖到鸡窝才能孵化哦！', data.x, data.y - 40)
+        }
         return
       }
 
