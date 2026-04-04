@@ -303,6 +303,16 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
                 raceState={chickRace.raceState}
                 countdown={chickRace.countdown}
                 onClickTrack={chickRace.handleClickTrack}
+                shakeOffset={chickRace.shakeOffset}
+                playerScaleXBoost={chickRace.playerScaleXBoost}
+                playerGlowAlpha={chickRace.playerGlowAlpha}
+                sparks={chickRace.sparks}
+                dustClouds={chickRace.dustClouds}
+                speedLines={chickRace.speedLines}
+                floatingTexts={chickRace.floatingTexts}
+                confetti={chickRace.confetti}
+                stars={chickRace.stars}
+                winnerLane={chickRace.winnerLane}
               />
             </>
           )}

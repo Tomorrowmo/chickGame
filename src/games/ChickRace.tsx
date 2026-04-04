@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Graphics } from 'pixi.js'
 import { useTick } from '@pixi/react'
 import { useGameStore } from '../store/gameStore'
-import { gameStart, gameWin, gameLose } from '../systems/audio'
+import { gameStart, gameWin, gameLose, pop } from '../systems/audio'
 import type { GamePhase } from './GameOverlay'
 
 /** Canvas dimensions */
@@ -44,6 +44,67 @@ interface RaceChick {
   finishOrder: number
 }
 
+/** Effect particles */
+interface SpeedSpark {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+}
+
+interface DustCloud {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+  size: number
+}
+
+interface FloatingText {
+  x: number
+  y: number
+  text: string
+  life: number
+  maxLife: number
+  color: number
+}
+
+interface SpeedLine {
+  x: number
+  y: number
+  length: number
+  speed: number
+  alpha: number
+}
+
+interface ConfettiParticle {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+  color: number
+  size: number
+  rotation: number
+  rotSpeed: number
+}
+
+interface StarParticle {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+  size: number
+  color: number
+}
+
 function laneY(lane: number): number {
   return TRACK_TOP + lane * LANE_HEIGHT + LANE_HEIGHT / 2
 }
@@ -54,7 +115,15 @@ function RaceTrack({ draw }: { draw: (g: Graphics) => void }) {
 }
 
 /** Pixi component: draws a single race chick */
-function RaceChickSprite({ chick }: { chick: RaceChick }) {
+function RaceChickSprite({
+  chick,
+  scaleXBoost,
+  glowAlpha,
+}: {
+  chick: RaceChick
+  scaleXBoost: number
+  glowAlpha: number
+}) {
   const cx = START_X + chick.x
   const cy = laneY(chick.lane)
   const bob = Math.sin(chick.bobPhase) * 4
@@ -63,6 +132,12 @@ function RaceChickSprite({ chick }: { chick: RaceChick }) {
     (g: Graphics) => {
       g.clear()
       const color = chick.color
+
+      // Glow effect for player on click
+      if (chick.isPlayer && glowAlpha > 0) {
+        g.circle(0, bob, 24).fill({ color: 0xffff00, alpha: glowAlpha * 0.4 })
+        g.circle(0, bob, 18).fill({ color: 0xffff00, alpha: glowAlpha * 0.25 })
+      }
 
       // Body
       g.circle(0, bob, 14).fill(color)
@@ -89,13 +164,104 @@ function RaceChickSprite({ chick }: { chick: RaceChick }) {
         g.star(0, bob - 28, 5, 6, 3).fill({ color: 0xffd93d, alpha: 0.9 })
       }
     },
-    [chick.color, chick.isPlayer, bob, chick.bobPhase],
+    [chick.color, chick.isPlayer, bob, chick.bobPhase, glowAlpha],
   )
 
   return (
-    <pixiContainer x={cx} y={cy}>
+    <pixiContainer x={cx} y={cy} scale={{ x: 1 + scaleXBoost, y: 1 }}>
       <pixiGraphics draw={drawChick} />
     </pixiContainer>
+  )
+}
+
+/** Pixi component: draws all race effects (sparks, dust, speed lines, celebrations) */
+function RaceEffects({
+  sparks,
+  dustClouds,
+  speedLines,
+  floatingTexts,
+  confetti,
+  stars,
+  winnerLane,
+}: {
+  sparks: SpeedSpark[]
+  dustClouds: DustCloud[]
+  speedLines: SpeedLine[]
+  floatingTexts: FloatingText[]
+  confetti: ConfettiParticle[]
+  stars: StarParticle[]
+  winnerLane: number
+}) {
+  const drawEffects = useCallback(
+    (g: Graphics) => {
+      g.clear()
+
+      // Speed lines background
+      for (const line of speedLines) {
+        g.moveTo(line.x, line.y)
+          .lineTo(line.x + line.length, line.y)
+          .stroke({ color: 0xffffff, width: 1.5, alpha: line.alpha })
+      }
+
+      // Dust clouds
+      for (const d of dustClouds) {
+        const alpha = (d.life / d.maxLife) * 0.4
+        g.circle(d.x, d.y, d.size * (1 + (1 - d.life / d.maxLife) * 0.5)).fill({
+          color: 0x999999,
+          alpha,
+        })
+      }
+
+      // Speed sparks
+      for (const s of sparks) {
+        const alpha = s.life / s.maxLife
+        // Draw as short lines radiating backward
+        g.moveTo(s.x, s.y)
+          .lineTo(s.x + s.vx * 3, s.y + s.vy * 3)
+          .stroke({ color: 0xffdd00, width: 2, alpha })
+      }
+
+      // Confetti
+      for (const c of confetti) {
+        const alpha = c.life / c.maxLife
+        g.rect(c.x - c.size / 2, c.y - c.size / 2, c.size, c.size * 0.6).fill({
+          color: c.color,
+          alpha,
+        })
+      }
+
+      // Star particles (winner celebration)
+      for (const s of stars) {
+        const alpha = s.life / s.maxLife
+        g.star(s.x, s.y, 4, s.size, s.size * 0.4, 0).fill({ color: s.color, alpha })
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sparks.length, dustClouds.length, speedLines.length, confetti.length, stars.length, winnerLane],
+  )
+
+  return (
+    <>
+      <pixiGraphics draw={drawEffects} />
+      {/* Floating texts rendered as pixiText for clarity */}
+      {floatingTexts.map((ft, i) => (
+        <pixiText
+          key={i}
+          text={ft.text}
+          x={ft.x}
+          y={ft.y}
+          alpha={ft.life / ft.maxLife}
+          style={{
+            fontFamily: '"Comic Sans MS", cursive',
+            fontSize: 18,
+            fontWeight: 'bold',
+            fill: ft.color,
+            stroke: { color: 0x000000, width: 2 },
+          }}
+          anchor={{ x: 0.5, y: 0.5 }}
+        />
+      ))}
+    </>
   )
 }
 
@@ -105,11 +271,31 @@ export function ChickRacePixi({
   raceState,
   countdown,
   onClickTrack,
+  shakeOffset,
+  playerScaleXBoost,
+  playerGlowAlpha,
+  sparks,
+  dustClouds,
+  speedLines,
+  floatingTexts,
+  confetti,
+  stars,
+  winnerLane,
 }: {
   raceChicks: RaceChick[]
   raceState: 'selecting' | 'countdown' | 'racing' | 'done'
   countdown: number
   onClickTrack: () => void
+  shakeOffset: { x: number; y: number }
+  playerScaleXBoost: number
+  playerGlowAlpha: number
+  sparks: SpeedSpark[]
+  dustClouds: DustCloud[]
+  speedLines: SpeedLine[]
+  floatingTexts: FloatingText[]
+  confetti: ConfettiParticle[]
+  stars: StarParticle[]
+  winnerLane: number
 }) {
   const drawTrack = useCallback(
     (g: Graphics) => {
@@ -143,15 +329,12 @@ export function ChickRacePixi({
           ).fill(isBlack ? 0x000000 : 0xffffff)
         }
       }
-
-      // Lane labels
-      // (We'll skip text in graphics; names shown via the overlay)
     },
     [],
   )
 
   return (
-    <pixiContainer>
+    <pixiContainer x={shakeOffset.x} y={shakeOffset.y}>
       <RaceTrack draw={drawTrack} />
       {/* Hit area for clicking to boost */}
       <pixiGraphics
@@ -163,11 +346,36 @@ export function ChickRacePixi({
         cursor="pointer"
         onPointerDown={onClickTrack}
       />
+      {/* Effects behind chicks */}
+      <RaceEffects
+        sparks={sparks}
+        dustClouds={dustClouds}
+        speedLines={speedLines}
+        floatingTexts={floatingTexts}
+        confetti={confetti}
+        stars={stars}
+        winnerLane={winnerLane}
+      />
       {raceChicks.map((chick) => (
-        <RaceChickSprite key={chick.lane} chick={chick} />
+        <RaceChickSprite
+          key={chick.lane}
+          chick={chick}
+          scaleXBoost={chick.isPlayer ? playerScaleXBoost : 0}
+          glowAlpha={chick.isPlayer ? playerGlowAlpha : 0}
+        />
       ))}
     </pixiContainer>
   )
+}
+
+/** Commentary messages */
+const ENCOURAGE_MSGS = ['加油！', '冲冲冲！', '太快了！', '再快一点！']
+const LEADING_MSGS = ['领先了！', '保持住！']
+const BEHIND_MSGS = ['快追上去！', '别放弃！', '还有机会！']
+const NEAR_FINISH_MSG = '终点就在眼前！'
+
+function randomFrom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
 }
 
 /** Race game controller hook */
@@ -185,9 +393,38 @@ export function ChickRaceGame() {
   const [playerPlace, setPlayerPlace] = useState(0)
   const [coinsEarned, setCoinsEarned] = useState(0)
 
+  // Effect states
+  const [shakeOffset, setShakeOffset] = useState({ x: 0, y: 0 })
+  const [playerScaleXBoost, setPlayerScaleXBoost] = useState(0)
+  const [playerGlowAlpha, setPlayerGlowAlpha] = useState(0)
+  const [sparks, setSparks] = useState<SpeedSpark[]>([])
+  const [dustClouds, setDustClouds] = useState<DustCloud[]>([])
+  const [speedLines, setSpeedLines] = useState<SpeedLine[]>([])
+  const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([])
+  const [confetti, setConfetti] = useState<ConfettiParticle[]>([])
+  const [stars, setStars] = useState<StarParticle[]>([])
+  const [winnerLane, setWinnerLane] = useState(-1)
+
   const boostRef = useRef(0) // accumulated click boost velocity
   const finishCountRef = useRef(0)
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Effect refs for mutation in tick
+  const shakeDecayRef = useRef(0)
+  const scaleBoostDecayRef = useRef(0)
+  const glowDecayRef = useRef(0)
+  const sparksRef = useRef<SpeedSpark[]>([])
+  const dustRef = useRef<DustCloud[]>([])
+  const speedLinesRef = useRef<SpeedLine[]>([])
+  const floatingTextsRef = useRef<FloatingText[]>([])
+  const confettiRef = useRef<ConfettiParticle[]>([])
+  const starsRef = useRef<StarParticle[]>([])
+  const dustTimerRef = useRef(0)
+  const commentaryTimerRef = useRef(0)
+  const clickCountRef = useRef(0)
+  const clickWindowRef = useRef(0)
+  const nearFinishShownRef = useRef(false)
+  const winCelebrationDoneRef = useRef(false)
 
   const initChicks = useCallback((playerLane: number) => {
     const chicks: RaceChick[] = []
@@ -220,6 +457,21 @@ export function ChickRaceGame() {
     setCoinsEarned(0)
     boostRef.current = 0
     finishCountRef.current = 0
+    sparksRef.current = []
+    dustRef.current = []
+    speedLinesRef.current = []
+    floatingTextsRef.current = []
+    confettiRef.current = []
+    starsRef.current = []
+    nearFinishShownRef.current = false
+    winCelebrationDoneRef.current = false
+    setWinnerLane(-1)
+    setSparks([])
+    setDustClouds([])
+    setSpeedLines([])
+    setFloatingTexts([])
+    setConfetti([])
+    setStars([])
     gameStart()
   }, [initChicks])
 
@@ -247,20 +499,164 @@ export function ChickRaceGame() {
     }, 1000)
   }, [raceState])
 
+  const spawnClickEffects = useCallback((playerChick: RaceChick) => {
+    const cx = START_X + playerChick.x
+    const cy = laneY(playerChick.lane)
+
+    // Spawn sparks behind the chick
+    for (let i = 0; i < 3; i++) {
+      const angle = Math.PI + (Math.random() - 0.5) * 1.2 // backward
+      const speed = 2 + Math.random() * 3
+      sparksRef.current.push({
+        x: cx - 10,
+        y: cy + (Math.random() - 0.5) * 10,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 15,
+        maxLife: 15,
+      })
+    }
+
+    // Trigger glow
+    glowDecayRef.current = 10
+    // Trigger scale stretch
+    scaleBoostDecayRef.current = 8
+    // Trigger screen shake
+    shakeDecayRef.current = 6
+  }, [])
+
   const handleClickTrack = useCallback(() => {
     if (raceState === 'racing') {
       boostRef.current += CLICK_BOOST
+      pop()
+
+      // Track click speed for commentary
+      clickCountRef.current++
+      clickWindowRef.current = 1.0 // reset window
+
+      // Spawn click effects on player chick
+      setRaceChicks((prev) => {
+        const player = prev.find((c) => c.isPlayer)
+        if (player) spawnClickEffects(player)
+        return prev
+      })
     }
-  }, [raceState])
+  }, [raceState, spawnClickEffects])
 
   // Race tick
   function RaceUpdater() {
     useTick((ticker) => {
-      if (raceState !== 'racing') return
+      if (raceState !== 'racing' && raceState !== 'done') return
       const dt = ticker.deltaTime / 60 // seconds
+      const dtFrames = ticker.deltaTime
+
+      // === Update effects ===
+
+      // Screen shake decay
+      if (shakeDecayRef.current > 0) {
+        shakeDecayRef.current -= dtFrames
+        const intensity = Math.max(0, shakeDecayRef.current) * 0.6
+        setShakeOffset({
+          x: (Math.random() - 0.5) * intensity,
+          y: (Math.random() - 0.5) * intensity,
+        })
+      } else {
+        setShakeOffset({ x: 0, y: 0 })
+      }
+
+      // Scale stretch decay
+      if (scaleBoostDecayRef.current > 0) {
+        scaleBoostDecayRef.current -= dtFrames
+        setPlayerScaleXBoost(Math.max(0, scaleBoostDecayRef.current / 8) * 0.3)
+      } else {
+        setPlayerScaleXBoost(0)
+      }
+
+      // Glow decay
+      if (glowDecayRef.current > 0) {
+        glowDecayRef.current -= dtFrames
+        setPlayerGlowAlpha(Math.max(0, glowDecayRef.current / 10))
+      } else {
+        setPlayerGlowAlpha(0)
+      }
+
+      // Update sparks
+      let sparksChanged = false
+      for (const s of sparksRef.current) {
+        s.x += s.vx * dtFrames
+        s.y += s.vy * dtFrames
+        s.life -= dtFrames
+      }
+      const prevSparkLen = sparksRef.current.length
+      sparksRef.current = sparksRef.current.filter((s) => s.life > 0)
+      if (sparksRef.current.length !== prevSparkLen) sparksChanged = true
+      if (sparksChanged || sparksRef.current.length > 0) {
+        setSparks([...sparksRef.current])
+      }
+
+      // Update dust clouds
+      for (const d of dustRef.current) {
+        d.x += d.vx * dtFrames
+        d.y += d.vy * dtFrames
+        d.life -= dtFrames
+      }
+      dustRef.current = dustRef.current.filter((d) => d.life > 0)
+
+      // Update speed lines
+      for (const sl of speedLinesRef.current) {
+        sl.x -= sl.speed * dtFrames
+        sl.alpha -= 0.02 * dtFrames
+      }
+      speedLinesRef.current = speedLinesRef.current.filter((sl) => sl.x + sl.length > 0 && sl.alpha > 0)
+
+      // Update floating texts
+      for (const ft of floatingTextsRef.current) {
+        ft.y -= 0.8 * dtFrames
+        ft.life -= dtFrames
+      }
+      floatingTextsRef.current = floatingTextsRef.current.filter((ft) => ft.life > 0)
+      setFloatingTexts([...floatingTextsRef.current])
+
+      // Update confetti
+      for (const c of confettiRef.current) {
+        c.x += c.vx * dtFrames
+        c.y += c.vy * dtFrames
+        c.vy += 0.03 * dtFrames // gravity
+        c.rotation += c.rotSpeed * dtFrames
+        c.life -= dtFrames
+      }
+      confettiRef.current = confettiRef.current.filter((c) => c.life > 0)
+      setConfetti([...confettiRef.current])
+
+      // Update stars
+      for (const s of starsRef.current) {
+        s.x += s.vx * dtFrames
+        s.y += s.vy * dtFrames
+        s.vy += 0.02 * dtFrames
+        s.life -= dtFrames
+      }
+      starsRef.current = starsRef.current.filter((s) => s.life > 0)
+      setStars([...starsRef.current])
+
+      if (raceState !== 'racing') {
+        setDustClouds([...dustRef.current])
+        setSpeedLines([...speedLinesRef.current])
+        return
+      }
 
       // Decay player boost
       boostRef.current = Math.max(0, boostRef.current - CLICK_BOOST_DECAY * dt)
+
+      // Click window timer for commentary
+      if (clickWindowRef.current > 0) {
+        clickWindowRef.current -= dt
+        if (clickWindowRef.current <= 0) {
+          clickCountRef.current = 0
+        }
+      }
+
+      // Commentary timer
+      commentaryTimerRef.current -= dt
 
       setRaceChicks((prev) => {
         let newFinishCount = finishCountRef.current
@@ -287,6 +683,38 @@ export function ChickRaceGame() {
           x += speed * dt
           bobPhase += speed * dt * 0.15
 
+          // Spawn dust clouds for running chicks
+          dustTimerRef.current -= dt
+          if (dustTimerRef.current <= 0) {
+            dustTimerRef.current = 0.08
+            const intensity = speed / BASE_SPEED
+            if (Math.random() < Math.min(intensity * 0.4, 0.9)) {
+              const cy = laneY(chick.lane)
+              dustRef.current.push({
+                x: START_X + x - 12,
+                y: cy + 12 + (Math.random() - 0.5) * 6,
+                vx: -0.3 - Math.random() * 0.5,
+                vy: -0.1 - Math.random() * 0.3,
+                life: 20 + Math.random() * 10,
+                maxLife: 30,
+                size: 3 + Math.random() * 3,
+              })
+            }
+          }
+
+          // Speed lines when going fast
+          if (speed > BASE_SPEED * 0.9) {
+            if (Math.random() < 0.15) {
+              speedLinesRef.current.push({
+                x: CANVAS_W,
+                y: TRACK_TOP + Math.random() * (TRACK_BOTTOM - TRACK_TOP),
+                length: 30 + Math.random() * 60,
+                speed: 4 + Math.random() * 6,
+                alpha: 0.15 + Math.random() * 0.15,
+              })
+            }
+          }
+
           // Check finish
           let finished = false
           let finishOrd = 0
@@ -296,10 +724,84 @@ export function ChickRaceGame() {
             newFinishCount++
             finishOrd = newFinishCount
             order.push(chick.lane)
+
+            // Winner celebration
+            if (newFinishCount === 1) {
+              setWinnerLane(chick.lane)
+              // Spawn star particles around winner
+              const wx = START_X + TRACK_LENGTH
+              const wy = laneY(chick.lane)
+              for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2
+                const spd = 1.5 + Math.random() * 2
+                starsRef.current.push({
+                  x: wx,
+                  y: wy,
+                  vx: Math.cos(angle) * spd,
+                  vy: Math.sin(angle) * spd - 1,
+                  life: 50 + Math.random() * 20,
+                  maxLife: 70,
+                  size: 4 + Math.random() * 4,
+                  color: [0xffd700, 0xffec8b, 0xffa500, 0xffffff][Math.floor(Math.random() * 4)],
+                })
+              }
+            }
           }
 
           return { ...chick, x, speedVariation, variationTimer, bobPhase, finished, finishOrder: finishOrd }
         })
+
+        // Commentary logic
+        if (commentaryTimerRef.current <= 0) {
+          const player = next.find((c) => c.isPlayer)
+          if (player && !player.finished) {
+            const playerProgress = player.x / TRACK_LENGTH
+            const positions = next
+              .filter((c) => !c.finished)
+              .sort((a, b) => b.x - a.x)
+            const playerRank = positions.findIndex((c) => c.isPlayer) + 1
+
+            let msg: string | null = null
+            let color = 0xffffff
+
+            // Near finish line
+            if (playerProgress > 0.8 && !nearFinishShownRef.current) {
+              msg = NEAR_FINISH_MSG
+              color = 0xff4444
+              nearFinishShownRef.current = true
+              commentaryTimerRef.current = 2.0
+            }
+            // Fast clicking
+            else if (clickCountRef.current >= 3) {
+              msg = randomFrom(ENCOURAGE_MSGS)
+              color = 0xffdd00
+              commentaryTimerRef.current = 1.5
+            }
+            // Leading
+            else if (playerRank === 1 && playerProgress > 0.2) {
+              msg = randomFrom(LEADING_MSGS)
+              color = 0x66ff66
+              commentaryTimerRef.current = 3.0
+            }
+            // Behind
+            else if (playerRank >= 3) {
+              msg = randomFrom(BEHIND_MSGS)
+              color = 0xff8866
+              commentaryTimerRef.current = 2.5
+            }
+
+            if (msg) {
+              floatingTextsRef.current.push({
+                x: START_X + player.x + 10,
+                y: laneY(player.lane) - 40,
+                text: msg,
+                life: 50,
+                maxLife: 50,
+                color,
+              })
+            }
+          }
+        }
 
         if (newFinishCount !== finishCountRef.current) {
           finishCountRef.current = newFinishCount
@@ -309,6 +811,36 @@ export function ChickRaceGame() {
           const playerChick = next.find((c) => c.isPlayer)
           if (playerChick?.finished && playerPlace === 0) {
             setPlayerPlace(playerChick.finishOrder)
+
+            // If player wins, spawn confetti
+            if (playerChick.finishOrder === 1 && !winCelebrationDoneRef.current) {
+              winCelebrationDoneRef.current = true
+              const colors = [0xff4444, 0x44ff44, 0x4444ff, 0xffdd00, 0xff88ff, 0x44ffff]
+              for (let i = 0; i < 40; i++) {
+                confettiRef.current.push({
+                  x: CANVAS_W / 2 + (Math.random() - 0.5) * 400,
+                  y: -20 - Math.random() * 60,
+                  vx: (Math.random() - 0.5) * 4,
+                  vy: 1 + Math.random() * 2,
+                  life: 80 + Math.random() * 40,
+                  maxLife: 120,
+                  color: colors[Math.floor(Math.random() * colors.length)],
+                  size: 4 + Math.random() * 6,
+                  rotation: Math.random() * Math.PI * 2,
+                  rotSpeed: (Math.random() - 0.5) * 0.3,
+                })
+              }
+
+              // Big winner text
+              floatingTextsRef.current.push({
+                x: CANVAS_W / 2,
+                y: CANVAS_H / 2 - 40,
+                text: '冠军！',
+                life: 90,
+                maxLife: 90,
+                color: 0xffd700,
+              })
+            }
           }
 
           // All done?
@@ -319,6 +851,9 @@ export function ChickRaceGame() {
 
         return next
       })
+
+      setDustClouds([...dustRef.current])
+      setSpeedLines([...speedLinesRef.current])
     })
     return null
   }
@@ -374,6 +909,17 @@ export function ChickRaceGame() {
     handlePlayAgain,
     handleExit,
     RaceUpdater,
+    // Effect states
+    shakeOffset,
+    playerScaleXBoost,
+    playerGlowAlpha,
+    sparks,
+    dustClouds,
+    speedLines,
+    floatingTexts,
+    confetti,
+    stars,
+    winnerLane,
   }
 }
 
@@ -501,17 +1047,30 @@ export function ChickRaceOverlay({
   }
 
   if (phase === 'playing' && raceState === 'countdown') {
+    const isGo = countdown === 0
     return (
       <div style={{ ...overlayBase, background: 'rgba(0,0,0,0.3)', pointerEvents: 'none' }}>
         <div
+          key={countdown} // re-mount for animation reset
           style={{
-            fontSize: 72,
+            fontSize: isGo ? 96 : 88,
             fontWeight: 'bold',
-            textShadow: '0 4px 16px rgba(0,0,0,0.5)',
+            color: isGo ? '#ff3333' : '#ffcc00',
+            textShadow: isGo
+              ? '0 0 40px rgba(255,50,50,0.8), 0 4px 16px rgba(0,0,0,0.5)'
+              : '0 0 30px rgba(255,200,0,0.6), 0 4px 16px rgba(0,0,0,0.5)',
+            animation: 'countdown-pulse 0.8s ease-out',
           }}
         >
-          {countdown > 0 ? countdown : 'GO!'}
+          {isGo ? '出发！' : countdown}
         </div>
+        <style>{`
+          @keyframes countdown-pulse {
+            0% { transform: scale(2); opacity: 0.3; }
+            30% { opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+        `}</style>
       </div>
     )
   }
