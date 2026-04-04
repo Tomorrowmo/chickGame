@@ -68,6 +68,12 @@ export function TopBar() {
           pointerEvents: 'auto',
           opacity: 0.8,
           marginLeft: 4,
+          minWidth: 44,
+          minHeight: 44,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          WebkitTapHighlightColor: 'transparent',
         }}
         title={muted ? 'Unmute' : 'Mute'}
       >

@@ -4,4 +4,44 @@
   align-items: center;
   height: 100vh;
   background: #333;
+  overflow: hidden;
+}
+
+.game-wrapper {
+  position: relative;
+  transform-origin: center center;
+}
+
+/* Loading screen */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #fff8e1;
+  font-family: "Comic Sans MS", "Chalkboard SE", cursive;
+  user-select: none;
+}
+
+.loading-chick {
+  font-size: 72px;
+  animation: loading-bounce 1s ease-in-out infinite;
+}
+
+.loading-text {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.loading-subtext {
+  font-size: 14px;
+  color: #bbb;
+  font-style: italic;
+}
+
+@keyframes loading-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-16px); }
 }

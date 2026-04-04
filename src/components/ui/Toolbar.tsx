@@ -20,7 +20,8 @@ const btnBase: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   minWidth: 64,
-  padding: '6px 10px',
+  minHeight: 48,
+  padding: '8px 12px',
   fontSize: 13,
   fontFamily,
   borderRadius: 12,
@@ -29,6 +30,7 @@ const btnBase: React.CSSProperties = {
   transition: 'all 0.15s ease',
   boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
   color: '#5d4037',
+  WebkitTapHighlightColor: 'transparent',
 }
 
 export function Toolbar({ onAddEgg }: ToolbarProps) {

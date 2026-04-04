@@ -129,6 +129,17 @@ export function Chick({ data, onClick, onHatch }: ChickProps) {
     }
   })
 
+  const drawShadow = useCallback(
+    (g: Graphics) => {
+      g.clear()
+      // Shadow ellipse below the chick/egg
+      const shadowWidth = isEgg ? 16 : 22
+      const shadowY = isEgg ? 24 : 22
+      g.ellipse(0, shadowY, shadowWidth, 6).fill({ color: 0x000000, alpha: 0.15 })
+    },
+    [isEgg],
+  )
+
   const drawBody = useCallback(
     (g: Graphics) => {
       g.clear()
@@ -207,6 +218,7 @@ export function Chick({ data, onClick, onHatch }: ChickProps) {
       cursor="pointer"
       onPointerDown={handleClick}
     >
+      <pixiGraphics draw={drawShadow} />
       <pixiGraphics draw={drawBody} />
       {moodEmoji && (
         <pixiText

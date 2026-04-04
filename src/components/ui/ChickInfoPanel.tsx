@@ -113,8 +113,8 @@ export function ChickInfoPanel() {
         onClick={() => selectChick(null)}
         style={{
           position: 'absolute',
-          top: 6,
-          right: 8,
+          top: 2,
+          right: 2,
           background: 'none',
           border: 'none',
           fontSize: 18,
@@ -122,7 +122,13 @@ export function ChickInfoPanel() {
           color: '#9e9e9e',
           lineHeight: 1,
           padding: 0,
+          minWidth: 44,
+          minHeight: 44,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           fontFamily,
+          WebkitTapHighlightColor: 'transparent',
         }}
       >
         ✕
