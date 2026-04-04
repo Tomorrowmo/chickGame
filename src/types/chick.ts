@@ -25,4 +25,6 @@ export interface ChickData {
     | 'chasing'
   growthProgress: number // 0-100, triggers stage change at 100
   birthTime: number
+  eggTimer: number // countdown frames until next egg (adult only)
+  eggsLaid: number // total eggs laid by this chick
 }

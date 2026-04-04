@@ -35,5 +35,7 @@ export function createEgg(x: number, y: number): ChickData {
     currentAction: 'idle',
     growthProgress: 0,
     birthTime: Date.now(),
+    eggTimer: 3000,
+    eggsLaid: 0,
   }
 }

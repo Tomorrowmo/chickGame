@@ -45,9 +45,16 @@ export function TopBar() {
         userSelect: 'none',
       }}
     >
-      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          animation: coins < 10 ? 'coinPulse 1.5s ease-in-out infinite' : undefined,
+        }}
+      >
         <span style={{ fontSize: 20 }}>🪙</span>
-        <span style={{ fontWeight: 'bold' }}>{coins}</span>
+        <span style={{ fontWeight: 'bold', color: coins < 10 ? '#ef5350' : undefined }}>{coins}</span>
       </span>
       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: 20 }}>🐤</span>

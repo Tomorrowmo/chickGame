@@ -1,4 +1,4 @@
-import { useGameStore } from '../../store/gameStore'
+import { useGameStore, EGG_COIN_REWARD, EGG_TIMER_INITIAL } from '../../store/gameStore'
 import type { Rarity, Mood, LifeStage } from '../../types/chick'
 
 const fontFamily = '"Comic Sans MS", "Chalkboard SE", cursive'
@@ -235,6 +235,45 @@ export function ChickInfoPanel() {
 
       {/* Growth bar */}
       <StatBar label="成长" value={chick.growthProgress} color="#42a5f5" />
+
+      {/* Egg income section for adults */}
+      {chick.stage === 'adult' && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: '8px 0',
+            borderTop: '1px solid rgba(0,0,0,0.08)',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 'bold',
+              color: '#5d4037',
+              marginBottom: 6,
+              fontFamily,
+            }}
+          >
+            🥚 产蛋收入
+          </div>
+          <div style={{ fontSize: 12, color: '#795548', marginBottom: 4, fontFamily }}>
+            每蛋收入：🪙{EGG_COIN_REWARD[chick.rarity]}
+          </div>
+          <div style={{ fontSize: 12, color: '#795548', marginBottom: 6, fontFamily }}>
+            已产蛋：{chick.eggsLaid} 枚
+          </div>
+          <StatBar
+            label="下一枚蛋"
+            value={((EGG_TIMER_INITIAL - chick.eggTimer) / EGG_TIMER_INITIAL) * 100}
+            color="#ffa726"
+          />
+          {(chick.mood === 'bored' || chick.mood === 'angry') && (
+            <div style={{ fontSize: 11, color: '#ef5350', fontStyle: 'italic', fontFamily }}>
+              心情不好，暂停产蛋
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Action */}
       <div

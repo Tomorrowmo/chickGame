@@ -32,9 +32,27 @@ export const FOOD_COLORS: Record<FoodType, number> = {
   treat: 0xff69b4,  // pink
 }
 
+import type { Rarity } from '../types/chick'
+
+export const EGG_COIN_REWARD: Record<Rarity, number> = {
+  common: 5,
+  special: 10,
+  rare: 20,
+}
+
+export const EGG_TIMER_INITIAL = 3000 // ~50 seconds at 60fps
+
 let nextFoodId = 0
 
 export type MiniGameType = 'hideAndSeek' | 'race' | 'fetch'
+
+export interface EggLayEvent {
+  chickId: string
+  x: number
+  y: number
+  reward: number
+  timestamp: number
+}
 
 interface GameState {
   chicks: ChickData[]
@@ -44,6 +62,7 @@ interface GameState {
   feedingMode: boolean
   foodParticles: FoodParticle[]
   currentGame: MiniGameType | null
+  eggLayEvents: EggLayEvent[]
 
   // Actions
   addEgg: (x: number, y: number) => void
@@ -62,6 +81,7 @@ interface GameState {
   endGame: () => void
   addCoins: (amount: number) => void
   boostAllChickMood: (amount: number) => void
+  clearEggLayEvents: () => void
   saveGame: () => void
   showSaveIndicator: boolean
 }
@@ -76,6 +96,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   feedingMode: false,
   foodParticles: [],
   currentGame: null,
+  eggLayEvents: [],
   showSaveIndicator: false,
 
   addEgg: (x, y) =>
@@ -133,8 +154,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   tick: (delta) => {
     const state = get()
+    const newEggLayEvents: EggLayEvent[] = []
+    let coinGain = 0
+
     const updated = state.chicks.map((chick) => {
-      let { hunger, moodValue, growthProgress, stage, mood } = chick
+      let { hunger, moodValue, growthProgress, stage, mood, eggTimer, eggsLaid } = chick
 
       // Hunger decreases over time
       hunger = Math.max(0, hunger - 0.01 * delta)
@@ -159,9 +183,36 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       }
 
-      return { ...chick, hunger, moodValue, growthProgress, stage, mood }
+      // Adult egg-laying economy
+      if (stage === 'adult' && (mood === 'happy' || mood === 'normal')) {
+        const speed = mood === 'happy' ? 1.5 : 1
+        eggTimer = eggTimer - delta * speed
+        if (eggTimer <= 0) {
+          const reward = EGG_COIN_REWARD[chick.rarity]
+          coinGain += reward
+          eggsLaid += 1
+          eggTimer = EGG_TIMER_INITIAL
+          newEggLayEvents.push({
+            chickId: chick.id,
+            x: chick.x,
+            y: chick.y,
+            reward,
+            timestamp: Date.now(),
+          })
+        }
+      }
+
+      return { ...chick, hunger, moodValue, growthProgress, stage, mood, eggTimer, eggsLaid }
     })
-    set({ chicks: updated })
+
+    const updates: Partial<GameState> = { chicks: updated }
+    if (coinGain > 0) {
+      updates.coins = state.coins + coinGain
+    }
+    if (newEggLayEvents.length > 0) {
+      updates.eggLayEvents = [...state.eggLayEvents, ...newEggLayEvents]
+    }
+    set(updates as GameState)
   },
 
   setSelectedFood: (food) =>
@@ -223,6 +274,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           : c,
       ),
     })),
+
+  clearEggLayEvents: () => set({ eggLayEvents: [] }),
 
   saveGame: () => {
     const { chicks, coins, selectedChickId } = get()

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { extend, useTick } from '@pixi/react'
 import { Graphics, Text, Container } from 'pixi.js'
 import type { ChickData, LifeStage } from '../types/chick'
+import { EGG_TIMER_INITIAL } from '../store/gameStore'
 
 extend({ Graphics, Text, Container })
 
@@ -201,6 +202,57 @@ export function Chick({ data, onClick, onHatch }: ChickProps) {
     [isEgg, isHatching, data.direction],
   )
 
+  // Egg-laying floating text
+  const [floatingText, setFloatingText] = useState<{ text: string; key: number } | null>(null)
+  const floatingRef = useRef({ timer: 0, active: false })
+  const prevEggsLaidRef = useRef(data.eggsLaid)
+
+  useEffect(() => {
+    if (data.eggsLaid > prevEggsLaidRef.current) {
+      const reward = data.rarity === 'rare' ? 20 : data.rarity === 'special' ? 10 : 5
+      setFloatingText({ text: `\uD83E\uDD5A+${reward}`, key: Date.now() })
+      floatingRef.current = { timer: 0, active: true }
+    }
+    prevEggsLaidRef.current = data.eggsLaid
+  }, [data.eggsLaid, data.rarity])
+
+  const floatingOffsetRef = useRef(0)
+  const floatingAlphaRef = useRef(1)
+
+  useTick((ticker) => {
+    const f = floatingRef.current
+    if (f.active) {
+      f.timer += ticker.deltaTime
+      const duration = 90 // ~1.5s
+      const progress = f.timer / duration
+      floatingOffsetRef.current = -progress * 40
+      floatingAlphaRef.current = 1 - progress
+      if (f.timer >= duration) {
+        f.active = false
+        setFloatingText(null)
+        floatingOffsetRef.current = 0
+        floatingAlphaRef.current = 1
+      }
+    }
+  })
+
+  // Egg progress indicator for adults
+  const isAdult = data.stage === 'adult'
+  const eggProgress = isAdult ? 1 - data.eggTimer / EGG_TIMER_INITIAL : 0
+  const showEggIndicator = isAdult && eggProgress > 0.6
+
+  const drawEggIndicator = useCallback(
+    (g: Graphics) => {
+      g.clear()
+      if (!showEggIndicator) return
+      // Small egg icon that grows with progress
+      const indicatorScale = 0.3 + (eggProgress - 0.6) / 0.4 * 0.7 // 0.3 to 1.0
+      g.ellipse(0, 0, 6 * indicatorScale, 8 * indicatorScale).fill({ color: 0xfff8dc, alpha: 0.9 })
+      g.ellipse(0, 0, 6 * indicatorScale, 8 * indicatorScale).stroke({ width: 1, color: 0xffd700, alpha: 0.8 })
+    },
+    [showEggIndicator, eggProgress],
+  )
+
   const handleClick = useCallback(() => {
     // Trigger bounce animation
     bounceRef.current.active = true
@@ -227,6 +279,19 @@ export function Chick({ data, onClick, onHatch }: ChickProps) {
           y={isEgg ? -36 : -32}
           anchor={0.5}
           style={{ fontSize: 16 }}
+        />
+      )}
+      {showEggIndicator && (
+        <pixiGraphics draw={drawEggIndicator} x={18} y={-18} />
+      )}
+      {floatingText && (
+        <pixiText
+          text={floatingText.text}
+          x={0}
+          y={-44 + floatingOffsetRef.current}
+          anchor={0.5}
+          alpha={floatingAlphaRef.current}
+          style={{ fontSize: 14, fontWeight: 'bold', fill: 0xf5a623 }}
         />
       )}
     </pixiContainer>

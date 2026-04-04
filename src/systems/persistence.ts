@@ -1,7 +1,7 @@
 import type { ChickData } from '../types/chick'
 
 const SAVE_KEY = 'linda-game-save'
-const SAVE_VERSION = 1
+const SAVE_VERSION = 2
 const AUTO_SAVE_INTERVAL = 30_000 // 30 seconds
 
 interface SaveData {
@@ -53,8 +53,15 @@ export function loadGame(): PersistentState | null {
       return null
     }
 
-    // Future: migrate from older versions here
-    // if (data.version < SAVE_VERSION) { ... }
+    // Migrate from v1: add eggTimer and eggsLaid fields
+    if (data.version < 2) {
+      data.chicks = data.chicks.map((c: ChickData) => ({
+        ...c,
+        eggTimer: c.eggTimer ?? 3000,
+        eggsLaid: c.eggsLaid ?? 0,
+      }))
+      data.version = 2
+    }
 
     return {
       chicks: data.chicks,

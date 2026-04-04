@@ -116,40 +116,64 @@ export function Toolbar({ onAddEgg }: ToolbarProps) {
       />
 
       {/* Food buttons */}
-      {FOOD_OPTIONS.map(({ type, emoji, label }) => {
-        const cost = FOOD_COSTS[type]
-        const isSelected = selectedFood === type
-        const canAfford = coins >= cost
-        return (
-          <button
-            key={type}
-            onClick={() => handleFoodClick(type)}
-            disabled={!canAfford}
+      <div style={{ position: 'relative', display: 'flex', gap: 8 }}>
+        {/* Insufficient coins hint */}
+        {FOOD_OPTIONS.every(({ type }) => coins < FOOD_COSTS[type]) && (
+          <div
             style={{
-              ...btnBase,
-              border: isSelected
-                ? '2px solid #f5c542'
-                : '2px solid transparent',
-              background: isSelected
-                ? '#ffe082'
-                : canAfford
-                  ? '#fff8e1'
-                  : '#e8e8e8',
-              color: canAfford ? '#5d4037' : '#bdbdbd',
-              cursor: canAfford ? 'pointer' : 'not-allowed',
-              fontWeight: isSelected ? 'bold' : 'normal',
-              boxShadow: isSelected
-                ? '0 2px 10px rgba(245, 197, 66, 0.4)'
-                : '0 2px 6px rgba(0,0,0,0.12)',
+              position: 'absolute',
+              top: -22,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: 11,
+              color: '#ef5350',
+              fontFamily,
+              background: 'rgba(255, 248, 225, 0.95)',
+              padding: '1px 10px',
+              borderRadius: 6,
+              whiteSpace: 'nowrap',
+              fontWeight: 'bold',
             }}
           >
-            <span style={{ fontSize: 22 }}>{emoji}</span>
-            <span style={{ fontSize: 11 }}>
-              {label} ({cost})
-            </span>
-          </button>
-        )
-      })}
+            金币不足
+          </div>
+        )}
+        {FOOD_OPTIONS.map(({ type, emoji, label }) => {
+          const cost = FOOD_COSTS[type]
+          const isSelected = selectedFood === type
+          const canAfford = coins >= cost
+          return (
+            <button
+              key={type}
+              onClick={() => handleFoodClick(type)}
+              disabled={!canAfford}
+              style={{
+                ...btnBase,
+                border: isSelected
+                  ? '2px solid #f5c542'
+                  : '2px solid transparent',
+                background: isSelected
+                  ? '#ffe082'
+                  : canAfford
+                    ? '#fff8e1'
+                    : '#e8e8e8',
+                color: canAfford ? '#5d4037' : '#bdbdbd',
+                cursor: canAfford ? 'pointer' : 'not-allowed',
+                fontWeight: isSelected ? 'bold' : 'normal',
+                opacity: canAfford ? 1 : 0.6,
+                boxShadow: isSelected
+                  ? '0 2px 10px rgba(245, 197, 66, 0.4)'
+                  : '0 2px 6px rgba(0,0,0,0.12)',
+              }}
+            >
+              <span style={{ fontSize: 22 }}>{emoji}</span>
+              <span style={{ fontSize: 11 }}>
+                {label} 🪙{cost}
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
       {/* Divider */}
       <div
