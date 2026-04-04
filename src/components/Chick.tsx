@@ -6,6 +6,9 @@ import { EGG_TIMER_INITIAL } from '../store/gameStore'
 
 extend({ Graphics, Text, Container })
 
+/** Long press threshold in ms */
+const LONG_PRESS_MS = 500
+
 const STAGE_SCALE: Record<string, number> = {
   egg: 0.6,
   hatching: 0.6,
@@ -37,13 +40,39 @@ interface ChickProps {
   data: ChickData
   onClick?: (data: ChickData) => void
   onHatch?: (data: ChickData) => void
+  isHeld?: boolean
+  onPickup?: (data: ChickData) => void
+  onRelease?: (data: ChickData) => void
+  holdCursorX?: number
+  holdCursorY?: number
 }
 
-export function Chick({ data, onClick, onHatch }: ChickProps) {
+export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, holdCursorX, holdCursorY }: ChickProps) {
   const scale = STAGE_SCALE[data.stage] ?? 1.0
   const isEgg = data.stage === 'egg' || data.stage === 'hatching'
   const isHatching = data.stage === 'hatching'
   const moodEmoji = MOOD_EMOJI[data.mood]
+
+  // Long press detection refs
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pointerDownRef = useRef(false)
+
+  // Held chick animation state
+  const heldAnimRef = useRef({ time: 0, nuzzleActive: false, nuzzleStart: 0 })
+  const heldBobRef = useRef(0)
+  const heldNuzzleRef = useRef(0)
+  /** Smoothed position for held chick (slight lag) */
+  const smoothPosRef = useRef({ x: data.x, y: data.y })
+  /** Hearts floating while held */
+  const [heldHearts, setHeldHearts] = useState<{ id: number; offset: number }[]>([])
+  const heartTimerRef = useRef(0)
+
+  // Drop animation state
+  const dropAnimRef = useRef({ active: false, timer: 0, startY: 0, targetY: 0 })
+  const dropBounceRef = useRef(0)
+  // Reluctant wobble after drop
+  const reluctantRef = useRef({ active: false, timer: 0 })
+  const reluctantRotRef = useRef(0)
 
   // Bounce animation state
   const bounceRef = useRef({ active: false, timer: 0 })
@@ -127,6 +156,85 @@ export function Chick({ data, onClick, onHatch }: ChickProps) {
       }
     } else {
       w.rotation = 0
+    }
+
+    // --- Held chick animations ---
+    if (isHeld) {
+      const h = heldAnimRef.current
+      h.time += dt / 60 // convert to seconds
+
+      // Gentle bob up and down
+      heldBobRef.current = Math.sin(h.time * 3) * 4
+
+      // Smooth position tracking (slight lag)
+      const targetX = holdCursorX ?? data.x
+      const targetY = (holdCursorY ?? data.y) - 40 // lift above cursor
+      const lerp = 0.12
+      smoothPosRef.current.x += (targetX - smoothPosRef.current.x) * lerp
+      smoothPosRef.current.y += (targetY - smoothPosRef.current.y) * lerp
+
+      // Nuzzle: after 2 seconds of being held, start side-to-side rotation
+      if (h.time > 2) {
+        if (!h.nuzzleActive) {
+          h.nuzzleActive = true
+          h.nuzzleStart = h.time
+        }
+        const nuzzleT = h.time - h.nuzzleStart
+        heldNuzzleRef.current = Math.sin(nuzzleT * 6) * 0.15 * Math.min(1, nuzzleT)
+      } else {
+        heldNuzzleRef.current = 0
+      }
+
+      // Periodically spawn hearts
+      heartTimerRef.current += dt
+      if (heartTimerRef.current > 40) { // ~0.67s at 60fps
+        heartTimerRef.current = 0
+        setHeldHearts((prev) => {
+          const next = [...prev, { id: Date.now(), offset: 0 }]
+          return next.slice(-3) // max 3 hearts
+        })
+      }
+    } else {
+      // Reset held state
+      heldAnimRef.current.time = 0
+      heldAnimRef.current.nuzzleActive = false
+      heldBobRef.current = 0
+      heldNuzzleRef.current = 0
+      heartTimerRef.current = 0
+      if (heldHearts.length > 0) setHeldHearts([])
+    }
+
+    // --- Drop bounce animation ---
+    const drop = dropAnimRef.current
+    if (drop.active) {
+      drop.timer += dt
+      const duration = 20 // frames
+      if (drop.timer >= duration) {
+        drop.active = false
+        drop.timer = 0
+        dropBounceRef.current = 0
+        // Start reluctant wobble
+        reluctantRef.current = { active: true, timer: 0 }
+      } else {
+        const progress = drop.timer / duration
+        // Bounce: fall down then small bounce up
+        dropBounceRef.current = -Math.sin(progress * Math.PI) * 8 * (1 - progress)
+      }
+    }
+
+    // --- Reluctant wobble after being put down ---
+    const rel = reluctantRef.current
+    if (rel.active) {
+      rel.timer += dt
+      const duration = 40 // frames (~0.67s)
+      if (rel.timer >= duration) {
+        rel.active = false
+        rel.timer = 0
+        reluctantRotRef.current = 0
+      } else {
+        const progress = rel.timer / duration
+        reluctantRotRef.current = Math.sin(progress * 20) * 0.12 * (1 - progress)
+      }
     }
   })
 
@@ -260,40 +368,132 @@ export function Chick({ data, onClick, onHatch }: ChickProps) {
     onClick?.(data)
   }, [onClick, data])
 
+  const handlePointerDown = useCallback(() => {
+    if (isEgg) {
+      // Eggs can't be picked up, just do regular click
+      handleClick()
+      return
+    }
+    pointerDownRef.current = true
+
+    // Start long press timer
+    holdTimerRef.current = setTimeout(() => {
+      if (pointerDownRef.current) {
+        // Long press detected — pick up chick
+        smoothPosRef.current = { x: data.x, y: data.y }
+        heldAnimRef.current = { time: 0, nuzzleActive: false, nuzzleStart: 0 }
+        onPickup?.(data)
+      }
+    }, LONG_PRESS_MS)
+  }, [isEgg, handleClick, data, onPickup])
+
+  const handlePointerUp = useCallback(() => {
+    const wasDown = pointerDownRef.current
+    pointerDownRef.current = false
+
+    if (holdTimerRef.current !== null) {
+      clearTimeout(holdTimerRef.current)
+      holdTimerRef.current = null
+    }
+
+    if (isHeld) {
+      // Release held chick — trigger drop animation
+      dropAnimRef.current = { active: true, timer: 0, startY: 0, targetY: 0 }
+      reluctantRef.current = { active: false, timer: 0 }
+      onRelease?.(data)
+    } else if (wasDown) {
+      // Short press — regular click
+      handleClick()
+    }
+  }, [isHeld, data, onRelease, handleClick])
+
+  // Compute final position: normal, held (tracking cursor), or dropping
+  const posX = isHeld ? smoothPosRef.current.x : data.x
+  const posY = isHeld
+    ? smoothPosRef.current.y + heldBobRef.current
+    : data.y + bounceOffsetRef.current + dropBounceRef.current
+  const finalScale = isHeld ? scale * 1.2 : scale
+  const finalRotation = isHeld
+    ? heldNuzzleRef.current
+    : wobbleRef.current.rotation + reluctantRotRef.current
+
+  // Draw ground shadow at original position when held
+  const drawHeldShadow = useCallback(
+    (g: Graphics) => {
+      g.clear()
+      g.ellipse(0, 22, 18, 5).fill({ color: 0x000000, alpha: 0.1 })
+    },
+    [],
+  )
+
   return (
-    <pixiContainer
-      x={data.x}
-      y={data.y + bounceOffsetRef.current}
-      scale={scale}
-      rotation={wobbleRef.current.rotation}
-      eventMode="static"
-      cursor="pointer"
-      onPointerDown={handleClick}
-    >
-      <pixiGraphics draw={drawShadow} />
-      <pixiGraphics draw={drawBody} />
-      {moodEmoji && (
-        <pixiText
-          text={moodEmoji}
-          x={0}
-          y={isEgg ? -36 : -32}
-          anchor={0.5}
-          style={{ fontSize: 16 }}
+    <>
+      {/* Shadow stays on ground when chick is held */}
+      {isHeld && (
+        <pixiGraphics
+          draw={drawHeldShadow}
+          x={data.x}
+          y={data.y}
         />
       )}
-      {showEggIndicator && (
-        <pixiGraphics draw={drawEggIndicator} x={18} y={-18} />
-      )}
-      {floatingText && (
-        <pixiText
-          text={floatingText.text}
-          x={0}
-          y={-44 + floatingOffsetRef.current}
-          anchor={0.5}
-          alpha={floatingAlphaRef.current}
-          style={{ fontSize: 14, fontWeight: 'bold', fill: 0xf5a623 }}
-        />
-      )}
-    </pixiContainer>
+      <pixiContainer
+        x={posX}
+        y={posY}
+        scale={finalScale}
+        rotation={finalRotation}
+        eventMode="static"
+        cursor={isHeld ? 'grabbing' : 'pointer'}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerUpOutside={handlePointerUp}
+        zIndex={isHeld ? 9999 : 0}
+      >
+        <pixiGraphics draw={drawShadow} />
+        <pixiGraphics draw={drawBody} />
+        {/* Held chick shows hearts emoji instead of mood */}
+        {isHeld ? (
+          <pixiText
+            text="❤️"
+            x={0}
+            y={-32}
+            anchor={0.5}
+            style={{ fontSize: 16 }}
+          />
+        ) : moodEmoji ? (
+          <pixiText
+            text={moodEmoji}
+            x={0}
+            y={isEgg ? -36 : -32}
+            anchor={0.5}
+            style={{ fontSize: 16 }}
+          />
+        ) : null}
+        {/* Floating hearts while held */}
+        {isHeld && heldHearts.map((h, i) => (
+          <pixiText
+            key={h.id}
+            text="💕"
+            x={-8 + i * 8}
+            y={-44 - i * 12}
+            anchor={0.5}
+            alpha={0.7}
+            style={{ fontSize: 12 }}
+          />
+        ))}
+        {showEggIndicator && (
+          <pixiGraphics draw={drawEggIndicator} x={18} y={-18} />
+        )}
+        {floatingText && (
+          <pixiText
+            text={floatingText.text}
+            x={0}
+            y={-44 + floatingOffsetRef.current}
+            anchor={0.5}
+            alpha={floatingAlphaRef.current}
+            style={{ fontSize: 14, fontWeight: 'bold', fill: 0xf5a623 }}
+          />
+        )}
+      </pixiContainer>
+    </>
   )
 }

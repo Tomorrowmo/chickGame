@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Application, extend, useTick } from '@pixi/react'
 import { Container, Graphics, Text } from 'pixi.js'
 import { Background } from './Background'
@@ -33,6 +33,9 @@ interface GameCanvasProps {
 
 const GRASS_RATIO = 0.6
 const CURSOR_ATTRACT_RADIUS = 100
+
+/** Shared held chick id so GameLoop can skip AI for held chicks */
+let _heldChickId: string | null = null
 
 /** Returns a random x position within the grass area */
 export function randomGrassX(width: number): number {
@@ -77,9 +80,13 @@ function GameLoop() {
     // Get latest chicks for AI (includes tick updates)
     const latestChicks = useGameStore.getState().chicks
 
+    // Get held chick id (skip AI for held chicks)
+    const heldId = _heldChickId
+
     // Run AI for each chick
     for (const chick of latestChicks) {
       if (chick.stage === 'egg' || chick.stage === 'hatching') continue
+      if (chick.id === heldId) continue // skip AI for held chick
 
       // Check for nearby food particles first
       let chasingFood = false
@@ -239,6 +246,11 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
   // Fetch game state (hook is always called, but only active when currentGame === 'fetch')
   const fetchGame = FetchGame()
 
+  // Held chick state
+  const [heldChickId, setHeldChickId] = useState<string | null>(null)
+  const cursorPosRef = useRef({ x: 0, y: 0 })
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 })
+
   const [hatchEffects, setHatchEffects] = useState<ActiveHatchEffect[]>([])
 
   const handleHatch = useCallback((data: ChickData) => {
@@ -279,9 +291,81 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
     [selectChick, petChick, addEffect, updateChick],
   )
 
+  /** Handle chick pickup (long press) */
+  const handleChickPickup = useCallback(
+    (data: ChickData) => {
+      setHeldChickId(data.id)
+      _heldChickId = data.id
+      chirp()
+      addEffect('heart', data.x, data.y - 20)
+    },
+    [addEffect],
+  )
+
+  /** Handle chick release (pointer up while holding) */
+  const handleChickRelease = useCallback(
+    (data: ChickData) => {
+      if (!heldChickId) return
+      const pos = cursorPosRef.current
+
+      // Clamp to grass area
+      const margin = 60
+      const grassTop = height * 0.55
+      const grassBottom = height - 40
+      const clampedX = Math.max(margin, Math.min(width - margin, pos.x))
+      const clampedY = Math.max(grassTop, Math.min(grassBottom, pos.y))
+
+      // Update chick position and boost mood (+20)
+      const chick = useGameStore.getState().chicks.find((c) => c.id === data.id)
+      const newMood = Math.min(100, (chick?.moodValue ?? 50) + 20)
+      updateChick(data.id, {
+        x: clampedX,
+        y: clampedY,
+        targetX: clampedX,
+        targetY: clampedY,
+        moodValue: newMood,
+      })
+
+      // Nearby chicks look up curiously
+      const allChicks = useGameStore.getState().chicks
+      for (const other of allChicks) {
+        if (other.id === data.id) continue
+        if (other.stage === 'egg' || other.stage === 'hatching') continue
+        const dx = clampedX - other.x
+        const dy = clampedY - other.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < 150) {
+          updateChick(other.id, {
+            direction: dx > 0 ? 'right' : 'left',
+          })
+        }
+      }
+
+      setHeldChickId(null)
+      _heldChickId = null
+    },
+    [heldChickId, height, width, updateChick],
+  )
+
+  /** Handle background pointer up — releases held chick if clicking on background */
+  const handleBackgroundPointerUp = useCallback(
+    (_e: FederatedPointerEvent) => {
+      if (heldChickId) {
+        const chick = chicks.find((c) => c.id === heldChickId)
+        if (chick) {
+          handleChickRelease(chick)
+        }
+      }
+    },
+    [heldChickId, chicks, handleChickRelease],
+  )
+
   /** Handle clicks on the background (not on a chick) */
   const handleBackgroundClick = useCallback(
     (e: FederatedPointerEvent) => {
+      // Don't trigger background effects while holding a chick
+      if (heldChickId) return
+
       const pos = e.global
       const x = pos.x
       const y = pos.y
@@ -302,16 +386,20 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
         addEffect(type, x, y)
       }
     },
-    [addEffect, grassY, feedingMode, selectedFood, scatterFood],
+    [addEffect, grassY, feedingMode, selectedFood, scatterFood, heldChickId],
   )
 
-  /** Track cursor position for chick attraction */
+  /** Track cursor position for chick attraction and held chick */
   const handlePointerMove = useCallback(
     (e: FederatedPointerEvent) => {
       const pos = e.global
       setCursor(pos.x, pos.y, pos.y > grassY)
+      cursorPosRef.current = { x: pos.x, y: pos.y }
+      if (heldChickId) {
+        setCursorPos({ x: pos.x, y: pos.y })
+      }
     },
-    [setCursor, grassY],
+    [setCursor, grassY, heldChickId],
   )
 
   return (
@@ -336,8 +424,10 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
         <pixiContainer
           eventMode="static"
           onPointerDown={handleBackgroundClick}
+          onPointerUp={handleBackgroundPointerUp}
           onPointerMove={handlePointerMove}
           hitArea={{ contains: () => true }}
+          sortableChildren
         >
           <GameLoop />
           <Background width={width} height={height} />
@@ -357,6 +447,11 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
               data={chick}
               onClick={handleChickClick}
               onHatch={handleHatch}
+              isHeld={heldChickId === chick.id}
+              onPickup={handleChickPickup}
+              onRelease={handleChickRelease}
+              holdCursorX={heldChickId === chick.id ? cursorPos.x : undefined}
+              holdCursorY={heldChickId === chick.id ? cursorPos.y : undefined}
             />
           ))}
           {hatchEffects.map((effect) => (
