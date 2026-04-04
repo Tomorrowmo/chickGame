@@ -81,12 +81,17 @@ export function updateChickAI(
   // === Night behavior: walk to the correct coop based on rarity and sleep ===
   if (night) {
     const targetCoop = getCoopForChick(chick)
-    const distToCoop = distBetween(chick, targetCoop)
-    if (distToCoop > 20) {
-      // Walk toward the assigned coop
-      const dx = targetCoop.x - chick.x
-      const dy = targetCoop.y - chick.y
-      const dist = distToCoop
+    // Each chick gets a unique offset around the coop based on its id hash
+    const idHash = chick.id.charCodeAt(0) + chick.id.charCodeAt(chick.id.length - 1)
+    const angle = (idHash % 12) * (Math.PI * 2 / 12)
+    const offsetDist = 20 + (idHash % 40)
+    const sleepX = targetCoop.x + Math.cos(angle) * offsetDist
+    const sleepY = targetCoop.y + Math.sin(angle) * offsetDist * 0.5
+    const distToSleep = distBetween(chick, { x: sleepX, y: sleepY })
+    if (distToSleep > 10) {
+      const dx = sleepX - chick.x
+      const dy = sleepY - chick.y
+      const dist = distToSleep
       const speed = 0.6 * delta
       updates.x = chick.x + (dx / dist) * speed
       updates.y = chick.y + (dy / dist) * speed
@@ -247,32 +252,7 @@ export function updateChickAI(
     }
   }
 
-  // === Separation: push away from chicks that are too close ===
-  // Adaptive: reduce separation when there are many chicks so they don't fight forever
-  const chickCount = allChicks.filter(c => c.stage !== 'egg' && c.stage !== 'hatching').length
-  const SEPARATION_RADIUS = chickCount > 30 ? 35 : chickCount > 15 ? 45 : 60
-  const SEPARATION_FORCE = 1.0
-  let sepX = 0
-  let sepY = 0
-  for (const other of otherChicks) {
-    const dx = chick.x - other.x
-    const dy = chick.y - other.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    if (dist < SEPARATION_RADIUS && dist > 0.1) {
-      // Push away proportional to how close
-      const strength = (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
-      sepX += (dx / dist) * strength * SEPARATION_FORCE * delta
-      sepY += (dy / dist) * strength * SEPARATION_FORCE * delta
-    }
-  }
-  if (sepX !== 0 || sepY !== 0) {
-    const newX = Math.max(WORLD_X_MIN, Math.min(WORLD_X_MAX, (updates.x ?? chick.x) + sepX))
-    const newY = Math.max(GROUND_Y_MIN, Math.min(GROUND_Y_MAX, (updates.y ?? chick.y) + sepY))
-    updates.x = newX
-    updates.y = newY
-  }
-
-  // Movement
+  // Movement first
   const action = updates.currentAction ?? chick.currentAction
   if (action === 'walking') {
     const dx = chick.targetX - chick.x
@@ -287,6 +267,28 @@ export function updateChickAI(
     } else {
       updates.currentAction = 'idle'
     }
+  }
+
+  // === Separation: AFTER movement, so it can't be overwritten ===
+  const SEPARATION_RADIUS = 50
+  const SEPARATION_FORCE = 2.0
+  let sepX = 0
+  let sepY = 0
+  for (const other of otherChicks) {
+    const dx = (updates.x ?? chick.x) - other.x
+    const dy = (updates.y ?? chick.y) - other.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist < SEPARATION_RADIUS && dist > 0.1) {
+      const strength = (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
+      sepX += (dx / dist) * strength * SEPARATION_FORCE * delta
+      sepY += (dy / dist) * strength * SEPARATION_FORCE * delta
+    }
+  }
+  if (sepX !== 0 || sepY !== 0) {
+    const baseX = updates.x ?? chick.x
+    const baseY = updates.y ?? chick.y
+    updates.x = Math.max(WORLD_X_MIN, Math.min(WORLD_X_MAX, baseX + sepX))
+    updates.y = Math.max(GROUND_Y_MIN, Math.min(GROUND_Y_MAX, baseY + sepY))
   }
 
   return updates
