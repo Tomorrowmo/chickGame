@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { isMuted, toggleMute } from '../../systems/audio'
 import { formatGameTime, getTimePhase } from '../../systems/timeSystem'
+import { ParentPanel } from './ParentPanel'
 
 const fontFamily = '"Comic Sans MS", "Chalkboard SE", cursive'
 
@@ -12,6 +13,7 @@ export function TopBar() {
   const showSaveIndicator = useGameStore((s) => s.showSaveIndicator)
   const [muted, setMuted] = useState(isMuted)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [parentOpen, setParentOpen] = useState(false)
   const settingsRef = useRef<HTMLDivElement>(null)
 
   const phase = getTimePhase(gameTime)
@@ -182,6 +184,26 @@ export function TopBar() {
             </div>
             <div
               role="button"
+              onClick={() => {
+                setParentOpen(true)
+                setSettingsOpen(false)
+              }}
+              style={{
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontSize: 14,
+                color: '#d4890e',
+                whiteSpace: 'nowrap',
+                borderTop: '1px solid rgba(0,0,0,0.08)',
+                fontWeight: 'bold',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(245, 197, 66, 0.2)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              👨‍👩‍👧 家长模式
+            </div>
+            <div
+              role="button"
               onClick={handleResetSave}
               style={{
                 padding: '8px 16px',
@@ -199,6 +221,7 @@ export function TopBar() {
           </div>
         )}
       </div>
+      <ParentPanel open={parentOpen} onClose={() => setParentOpen(false)} />
       {showSaveIndicator && (
         <span
           style={{
