@@ -177,12 +177,21 @@ export function generatePersonality(): ChickPersonality {
   }
 }
 
+// Generate a unique id that works on plain HTTP (crypto.randomUUID requires HTTPS)
+let _idCounter = 0
+function genId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `chick-${Date.now().toString(36)}-${(_idCounter++).toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 function createEggWithRarity(x: number, y: number, rarity: Rarity): ChickData {
   const breeds = BREEDS[rarity]
   const breed = breeds[Math.floor(Math.random() * breeds.length)]
 
   return {
-    id: crypto.randomUUID(),
+    id: genId(),
     name: '',
     breed,
     rarity,
