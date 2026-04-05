@@ -248,11 +248,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         return chick
       }
 
-      // Eggs in a coop but not yet fed also don't advance
-      if ((chick.stage === 'egg' || chick.stage === 'hatching') && !chick.eggFed) {
-        return chick
-      }
-
       // Hunger decreases over time
       hunger = Math.max(0, hunger - 0.01 * delta)
       // Mood decreases slowly
@@ -283,11 +278,14 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       }
 
-      // Adult egg-laying economy
-      if (stage === 'adult' && (mood === 'happy' || mood === 'normal')) {
+      // Adult egg-laying economy: hen must be fed (hunger > 40) to lay eggs
+      const canLay = stage === 'adult' && (mood === 'happy' || mood === 'normal') && hunger > 40
+      if (canLay) {
         const speed = mood === 'happy' ? 1.5 : 1
         eggTimer = eggTimer - delta * speed
         if (eggTimer <= 0) {
+          // Eating the egg's worth of energy - hen uses up hunger when laying
+          hunger = Math.max(0, hunger - 30)
           const reward = EGG_COIN_REWARD[chick.rarity]
           eggsLaid += 1
           eggTimer = EGG_TIMER_INITIAL
@@ -381,23 +379,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       })
     }
 
-    // Feed any in-coop eggs within 200px of the scatter point
-    const FEED_EGG_RADIUS = 200
-    const updatedChicks = state.chicks.map((c) => {
-      if (c.inCoop && !c.eggFed && (c.stage === 'egg' || c.stage === 'hatching')) {
-        const dx = c.x - x
-        const dy = c.y - y
-        if (Math.sqrt(dx * dx + dy * dy) < FEED_EGG_RADIUS) {
-          return { ...c, eggFed: true }
-        }
-      }
-      return c
-    })
-
     set({
       coins: state.coins - cost,
       foodParticles: [...state.foodParticles, ...particles],
-      chicks: updatedChicks,
     })
     get().incrementStat('totalFeedCount')
     return true

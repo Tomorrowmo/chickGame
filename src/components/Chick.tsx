@@ -548,16 +548,6 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
       >
         <pixiGraphics draw={drawShadow} />
         <pixiGraphics draw={drawBody} />
-        {/* Unfed egg in coop: show "hungry" hint */}
-        {isEgg && data.inCoop && !data.eggFed && (
-          <pixiText
-            text="饿~"
-            x={0}
-            y={-32}
-            anchor={0.5}
-            style={{ fontSize: 13, fontWeight: 'bold', fill: 0xe53935, fontFamily: 'sans-serif' }}
-          />
-        )}
         {/* Held chick shows hearts emoji instead of mood */}
         {isHeld ? (
           <pixiText

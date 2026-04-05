@@ -535,7 +535,7 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
                 targetX: nearCoop.x,
                 targetY: nearCoop.y,
               })
-              showCoopMessage('蛋已放入鸡舍！撒食喂它才会开始孵化哦~', nearCoop.x, nearCoop.y - 60)
+              showCoopMessage('蛋已放入鸡舍，开始孵化！', nearCoop.x, nearCoop.y - 60)
               setHeldChickId(null)
               _heldChickId = null
               return
