@@ -150,9 +150,15 @@ interface GameState {
 
 const savedState = loadGame()
 
+// Top-up for players with low funds — makes sure everyone can afford eggs
+const INITIAL_COINS = 300
+const effectiveCoins = savedState
+  ? Math.max(savedState.coins, savedState.chicks.length === 0 ? INITIAL_COINS : 20)
+  : INITIAL_COINS
+
 export const useGameStore = create<GameState>((set, get) => ({
   chicks: savedState?.chicks ?? [],
-  coins: savedState?.coins ?? 100,
+  coins: effectiveCoins,
   gameTime: savedState?.gameTime ?? 480, // default 8:00 AM
   selectedChickId: savedState?.selectedChickId ?? null,
   selectedFood: null,

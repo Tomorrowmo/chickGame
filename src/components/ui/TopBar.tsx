@@ -28,6 +28,14 @@ export function TopBar() {
     window.location.reload()
   }, [])
 
+  const handleResetSave = useCallback(() => {
+    if (confirm('确定要重置存档吗？所有小鸡、金币和进度都会清空！')) {
+      localStorage.removeItem('linda-game-save')
+      localStorage.removeItem('linda-tutorial-shown')
+      window.location.reload()
+    }
+  }, [])
+
   // Close dropdown when clicking outside
   useEffect(() => {
     if (!settingsOpen) return
@@ -171,6 +179,22 @@ export function TopBar() {
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
               重新看教程
+            </div>
+            <div
+              role="button"
+              onClick={handleResetSave}
+              style={{
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontSize: 14,
+                color: '#c62828',
+                whiteSpace: 'nowrap',
+                borderTop: '1px solid rgba(0,0,0,0.08)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(244, 67, 54, 0.1)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              重置存档
             </div>
           </div>
         )}
