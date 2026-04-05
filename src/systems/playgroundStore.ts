@@ -71,9 +71,11 @@ export const SWING_ROPE_LENGTH = 90
 export const SEESAW_PLANK_HALF_LENGTH = 90
 export const SEESAW_FULCRUM_TOP = { x: 550, y: 720 }
 
-/** Slide key points */
-export const SLIDE_LADDER_X = 870
+/** Slide key points — must match drawSlide() local coords */
+// drawSlide is rendered at <pixiGraphics x={SLIDE_TOP_PLATFORM.x} y={SLIDE_LADDER_BOTTOM_Y}>
+// Local top beam is at y=-110, local slide endpoint is (x=90, y=60)
+export const SLIDE_LADDER_X = 872 // center of ladder rails in world coords (render origin 890 + local -18)
 export const SLIDE_LADDER_BOTTOM_Y = 760
 export const SLIDE_LADDER_TOP_Y = 650
-export const SLIDE_TOP_PLATFORM = { x: 890, y: 640 }
-export const SLIDE_BOTTOM = { x: 970, y: 760 }
+export const SLIDE_TOP_PLATFORM = { x: 890, y: 645 } // slide curve start
+export const SLIDE_BOTTOM = { x: 980, y: 820 } // slide curve end
