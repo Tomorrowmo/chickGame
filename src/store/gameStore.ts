@@ -126,6 +126,8 @@ interface GameState {
   addCoins: (amount: number) => void
   boostAllChickMood: (amount: number) => void
   clearEggLayEvents: () => void
+  sellChick: (chickId: string) => boolean
+  getChickSellPrice: (chickId: string) => number
   sellLaidEgg: (eggId: string) => void
   hatchLaidEgg: (eggId: string) => void
   saveGame: () => void
@@ -453,6 +455,33 @@ export const useGameStore = create<GameState>((set, get) => ({
     })),
 
   clearEggLayEvents: () => set({ eggLayEvents: [] }),
+
+  getChickSellPrice: (chickId) => {
+    const chick = get().chicks.find((c) => c.id === chickId)
+    if (!chick) return 0
+    // Base price by rarity
+    const base = chick.rarity === 'rare' ? 200 : chick.rarity === 'special' ? 60 : 25
+    // Stage multiplier (adults most valuable because they lay eggs)
+    const stageMult =
+      chick.stage === 'adult' ? 1.0
+      : chick.stage === 'juvenile' ? 0.6
+      : chick.stage === 'baby' ? 0.35
+      : 0.2 // egg/hatching
+    return Math.round(base * stageMult)
+  },
+
+  sellChick: (chickId) => {
+    const state = get()
+    const chick = state.chicks.find((c) => c.id === chickId)
+    if (!chick) return false
+    const price = get().getChickSellPrice(chickId)
+    set({
+      coins: state.coins + price,
+      chicks: state.chicks.filter((c) => c.id !== chickId),
+      selectedChickId: state.selectedChickId === chickId ? null : state.selectedChickId,
+    })
+    return true
+  },
 
   sellLaidEgg: (eggId) => {
     const state = get()

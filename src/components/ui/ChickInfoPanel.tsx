@@ -114,11 +114,22 @@ export function ChickInfoPanel() {
   const selectedChickId = useGameStore((s) => s.selectedChickId)
   const chicks = useGameStore((s) => s.chicks)
   const selectChick = useGameStore((s) => s.selectChick)
+  const sellChick = useGameStore((s) => s.sellChick)
+  const getChickSellPrice = useGameStore((s) => s.getChickSellPrice)
 
   if (!selectedChickId) return null
 
   const chick = chicks.find((c) => c.id === selectedChickId)
   if (!chick) return null
+
+  const sellPrice = getChickSellPrice(selectedChickId)
+
+  const handleSell = () => {
+    const name = chick.name || BREED_LABELS[chick.breed] || chick.breed
+    if (confirm(`确定要把"${name}"卖掉吗？\n将获得 ${sellPrice} 金币`)) {
+      sellChick(selectedChickId)
+    }
+  }
 
   const displayName = chick.name || BREED_LABELS[chick.breed] || chick.breed
   const rarityColor = RARITY_COLORS[chick.rarity]
@@ -286,6 +297,35 @@ export function ChickInfoPanel() {
       >
         {ACTION_LABELS[chick.currentAction] || chick.currentAction}
       </div>
+
+      {/* Sell button */}
+      <button
+        onClick={handleSell}
+        style={{
+          marginTop: 10,
+          width: '100%',
+          padding: '8px 10px',
+          fontSize: 12,
+          fontFamily,
+          fontWeight: 'bold',
+          color: '#5d4037',
+          background: '#ffe082',
+          border: '2px solid #f5c542',
+          borderRadius: 10,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          transition: 'transform 0.1s',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.03)')}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+      >
+        <span>💰 卖掉</span>
+        <span style={{ color: '#d4890e' }}>+{sellPrice}</span>
+      </button>
     </div>
   )
 }
