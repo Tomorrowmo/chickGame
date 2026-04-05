@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useGameStore } from '../../store/gameStore'
 
 const fontFamily = '"Comic Sans MS", "Chalkboard SE", cursive'
@@ -23,26 +23,51 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
   const [reason, setReason] = useState('')
   const [toast, setToast] = useState<string | null>(null)
 
-  // Reset state when panel closes
+  const passwordInputRef = useRef<HTMLInputElement>(null)
+
+  // Reset state every time panel opens, and focus the password input
   useEffect(() => {
-    if (!open) {
+    if (open) {
       setPassword('')
       setUnlocked(false)
       setError(false)
       setAmount('10')
       setReason('')
+      // Delay focus to ensure the input is fully mounted
+      const t = setTimeout(() => {
+        passwordInputRef.current?.focus()
+      }, 50)
+      return () => clearTimeout(t)
     }
   }, [open])
 
-  const handleUnlock = useCallback(() => {
-    if (password === PARENT_PASSWORD) {
-      setUnlocked(true)
-      setError(false)
-    } else {
-      setError(true)
-      setPassword('')
+  // Re-focus when user returns to tab (handles browser tab switch)
+  useEffect(() => {
+    if (!open || unlocked) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        passwordInputRef.current?.focus()
+      }
     }
-  }, [password])
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [open, unlocked])
+
+  const handleUnlockSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (password.trim() === PARENT_PASSWORD) {
+        setUnlocked(true)
+        setError(false)
+      } else {
+        setError(true)
+        setPassword('')
+        passwordInputRef.current?.focus()
+      }
+    },
+    [password],
+  )
 
   const handleAward = useCallback(
     (delta: number) => {
@@ -85,6 +110,8 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         style={{
           background: '#fff8e1',
           borderRadius: 20,
@@ -121,7 +148,7 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
 
         {!unlocked ? (
           // === Password screen ===
-          <>
+          <form onSubmit={handleUnlockSubmit}>
             <div style={{ fontSize: 22, fontWeight: 'bold', color: '#d4890e', marginBottom: 6, textAlign: 'center' }}>
               👨‍👩‍👧 家长模式
             </div>
@@ -130,17 +157,16 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
               <span style={{ fontSize: 11, opacity: 0.7 }}>（仅家长可见）</span>
             </div>
             <input
+              ref={passwordInputRef}
               type="password"
+              inputMode="numeric"
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value)
                 setError(false)
               }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleUnlock()
-              }}
               placeholder="请输入密码"
-              autoFocus
+              autoComplete="off"
               style={{
                 width: '100%',
                 padding: '12px 14px',
@@ -153,6 +179,7 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
                 marginBottom: 8,
                 textAlign: 'center',
                 letterSpacing: 4,
+                outline: 'none',
               }}
             />
             {error && (
@@ -161,7 +188,7 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
               </div>
             )}
             <button
-              onClick={handleUnlock}
+              type="submit"
               style={{
                 width: '100%',
                 padding: '12px',
@@ -179,7 +206,7 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
             >
               解锁
             </button>
-          </>
+          </form>
         ) : (
           // === Parent dashboard ===
           <>
@@ -221,6 +248,7 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
               {[10, 20, 50, 100, 200, 500].map((n) => (
                 <button
                   key={n}
+                  type="button"
                   onClick={() => handleAward(n)}
                   style={{
                     padding: '10px 0',
@@ -261,9 +289,11 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
                   border: '2px solid #d4890e',
                   background: '#fff',
                   boxSizing: 'border-box',
+                  outline: 'none',
                 }}
               />
               <button
+                type="button"
                 onClick={handleCustomAward}
                 style={{
                   padding: '10px 20px',
@@ -298,6 +328,7 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
                 background: '#fffef5',
                 boxSizing: 'border-box',
                 marginBottom: 8,
+                outline: 'none',
               }}
             />
 
@@ -312,7 +343,6 @@ export function ParentPanel({ open, onClose }: ParentPanelProps) {
                   fontSize: 13,
                   fontWeight: 'bold',
                   textAlign: 'center',
-                  animation: 'fadeIn 0.3s',
                 }}
               >
                 ✨ {toast}
