@@ -367,14 +367,20 @@ export function updateChickAI(
     }
   }
 
-  // === Separation: AFTER movement, so it can't be overwritten ===
-  const SEPARATION_RADIUS = 50
-  const SEPARATION_FORCE = 2.0
+  // === Hard collision: chicks cannot overlap. Minimum distance enforced. ===
+  // Baby chicks are smaller so can get closer; adults need more space.
+  const MIN_DIST = chick.stage === 'baby' ? 38 : 48
+  let curX = updates.x ?? chick.x
+  let curY = updates.y ?? chick.y
+
+  // Soft separation force for nearby chicks (adds natural spacing)
+  const SEPARATION_RADIUS = 70
+  const SEPARATION_FORCE = 3.0
   let sepX = 0
   let sepY = 0
   for (const other of otherChicks) {
-    const dx = (updates.x ?? chick.x) - other.x
-    const dy = (updates.y ?? chick.y) - other.y
+    const dx = curX - other.x
+    const dy = curY - other.y
     const dist = Math.sqrt(dx * dx + dy * dy)
     if (dist < SEPARATION_RADIUS && dist > 0.1) {
       const strength = (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS
@@ -382,12 +388,32 @@ export function updateChickAI(
       sepY += (dy / dist) * strength * SEPARATION_FORCE * delta
     }
   }
-  if (sepX !== 0 || sepY !== 0) {
-    const baseX = updates.x ?? chick.x
-    const baseY = updates.y ?? chick.y
-    updates.x = Math.max(WORLD_X_MIN, Math.min(WORLD_X_MAX, baseX + sepX))
-    updates.y = Math.max(GROUND_Y_MIN, Math.min(GROUND_Y_MAX, baseY + sepY))
+  curX += sepX
+  curY += sepY
+
+  // Hard collision resolution: if still overlapping after separation, push out
+  // Iterate a few times so overlapping with multiple chicks stabilizes
+  for (let iter = 0; iter < 3; iter++) {
+    let collided = false
+    for (const other of otherChicks) {
+      const dx = curX - other.x
+      const dy = curY - other.y
+      const distSq = dx * dx + dy * dy
+      const minD = MIN_DIST
+      if (distSq < minD * minD && distSq > 0.01) {
+        const dist = Math.sqrt(distSq)
+        // Push this chick out to exactly minD away from the other
+        const push = (minD - dist) + 0.5
+        curX += (dx / dist) * push
+        curY += (dy / dist) * push
+        collided = true
+      }
+    }
+    if (!collided) break
   }
+
+  updates.x = Math.max(WORLD_X_MIN, Math.min(WORLD_X_MAX, curX))
+  updates.y = Math.max(GROUND_Y_MIN, Math.min(GROUND_Y_MAX, curY))
 
   return updates
 }
