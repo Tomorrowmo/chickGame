@@ -52,5 +52,6 @@ export interface ChickData {
   eggsLaid: number // total eggs laid by this chick
   inCoop: boolean // whether egg is placed in a coop (only eggs hatch when inCoop)
   coopType: CoopType | null // which coop the egg is in
+  feedsThisStage: number // number of times fed since last stage up; resets on stage change
   personality: ChickPersonality
 }

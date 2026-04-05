@@ -216,6 +216,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 hunger: Math.min(100, c.hunger + effects.hunger),
                 growthProgress: Math.min(100, c.growthProgress + effects.growth),
                 moodValue: Math.min(100, c.moodValue + effects.mood),
+                feedsThisStage: c.feedsThisStage + 1,
               }
             : c,
         ),
@@ -252,11 +253,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       hunger = Math.max(0, hunger - 0.01 * delta)
       // Mood decreases slowly
       moodValue = Math.max(0, moodValue - 0.005 * delta)
-      // Growth increases
-      // Growth speed: eggs/hatching grow faster, other stages slower
-      const isEggStage = stage === 'egg' || stage === 'hatching'
-      const growthSpeed = isEggStage ? 0.08 : 0.04
-      growthProgress = Math.min(100, growthProgress + growthSpeed * delta)
+      // Growth speed: slower overall; each stage takes longer now
+      // egg/hatching ~45s, baby ~90s, juvenile ~90s, adult = no growth
+      const growthSpeed =
+        stage === 'egg' || stage === 'hatching' ? 0.037
+        : stage === 'baby' || stage === 'juvenile' ? 0.018
+        : 0
+      // Growth only advances up to 95 until the chick has been fed this stage
+      let feedsThisStage = chick.feedsThisStage
+      const fedThisStage = feedsThisStage >= 1
+      const growthCap = fedThisStage ? 100 : 95
+      growthProgress = Math.min(growthCap, growthProgress + growthSpeed * delta)
 
       // Update mood label
       if (moodValue > 70) mood = 'happy'
@@ -264,14 +271,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       else if (moodValue > 20) mood = 'bored'
       else mood = 'angry'
 
-      // Stage progression
-      if (growthProgress >= 100) {
+      // Stage progression (only when fed at least once this stage)
+      if (growthProgress >= 100 && fedThisStage) {
         const stages = ['egg', 'hatching', 'baby', 'juvenile', 'adult'] as const
         const idx = stages.indexOf(stage)
         if (idx < stages.length - 1) {
           const prevStage = stage
           stage = stages[idx + 1]
           growthProgress = 0
+          feedsThisStage = 0 // reset feed counter for new stage
           if (prevStage === 'hatching' && stage === 'baby') {
             newHatches++
           }
@@ -308,7 +316,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
       }
 
-      return { ...chick, hunger, moodValue, growthProgress, stage, mood, eggTimer, eggsLaid }
+      return { ...chick, hunger, moodValue, growthProgress, stage, mood, eggTimer, eggsLaid, feedsThisStage }
     })
 
     // Dirt spot spawning: every ~3600 ticks (~60 seconds at 60fps), max 5

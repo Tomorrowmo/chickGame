@@ -548,6 +548,16 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
       >
         <pixiGraphics draw={drawShadow} />
         <pixiGraphics draw={drawBody} />
+        {/* Ready-to-grow hint: chick needs feeding to advance stage */}
+        {!isEgg && data.stage !== 'adult' && data.growthProgress >= 95 && data.feedsThisStage === 0 && (
+          <pixiText
+            text="想吃东西~"
+            x={0}
+            y={-36}
+            anchor={0.5}
+            style={{ fontSize: 11, fontWeight: 'bold', fill: 0xe53935, fontFamily: 'sans-serif' }}
+          />
+        )}
         {/* Held chick shows hearts emoji instead of mood */}
         {isHeld ? (
           <pixiText
