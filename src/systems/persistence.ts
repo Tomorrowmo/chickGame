@@ -5,7 +5,7 @@ import { DEFAULT_ACHIEVEMENT_STATS } from '../store/achievementData'
 import { generatePersonality } from '../store/chickFactory'
 
 const SAVE_KEY = 'linda-game-save'
-const SAVE_VERSION = 7
+const SAVE_VERSION = 8
 const AUTO_SAVE_INTERVAL = 30_000 // 30 seconds
 
 interface SaveData {
@@ -119,6 +119,15 @@ export function loadGame(): PersistentState | null {
         personality: (c as Record<string, unknown>).personality ?? generatePersonality(),
       }))
       data.version = 7
+    }
+
+    // Migrate from v7: add eggFed (existing non-egg chicks default to true so they keep growing)
+    if (data.version < 8) {
+      data.chicks = data.chicks.map((c: ChickData) => ({
+        ...c,
+        eggFed: (c as Record<string, unknown>).eggFed ?? (c.stage !== 'egg' && c.stage !== 'hatching'),
+      }))
+      data.version = 8
     }
 
     return {

@@ -202,6 +202,7 @@ function createEggWithRarity(x: number, y: number, rarity: Rarity): ChickData {
     eggsLaid: 0,
     inCoop: false,
     coopType: null,
+    eggFed: false,
     personality: generatePersonality(),
   }
 }
