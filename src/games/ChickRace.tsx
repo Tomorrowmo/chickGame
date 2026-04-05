@@ -268,8 +268,8 @@ function RaceEffects({
 /** Full race Pixi layer */
 export function ChickRacePixi({
   raceChicks,
-  raceState,
-  countdown,
+  raceState: _raceState,
+  countdown: _countdown,
   onClickTrack,
   shakeOffset,
   playerScaleXBoost,

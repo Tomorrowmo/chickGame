@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { Graphics } from 'pixi.js'
 import { useTick } from '@pixi/react'
 import {

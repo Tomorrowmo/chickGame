@@ -13,8 +13,8 @@ import {
 
 const fontFamily = '"Comic Sans MS", "Chalkboard SE", cursive'
 
-const GAME_WIDTH = 960
-const GAME_HEIGHT = 640
+const GAME_WIDTH = 1440
+const GAME_HEIGHT = 900
 
 export function Shop() {
   const shopOpen = useGameStore((s) => s.shopOpen)

@@ -252,7 +252,7 @@ function FetchUpdater({
   setFetchState,
   ball,
   setBall,
-  chick,
+  chick: _chick,
   setChick,
 }: {
   fetchState: FetchState
@@ -304,7 +304,7 @@ function FetchUpdater({
       // Check if ball landed to transition state
       // We read from the setter to avoid stale closure
       setBall((prev) => {
-        if (prev.landed && fetchState !== 'landed') {
+        if (prev.landed) {
           // Use setTimeout to avoid state update during render
           setTimeout(() => setFetchState('landed'), 0)
         }

@@ -74,7 +74,6 @@ const FOOD_DETECT_RADIUS = 200
 const FOOD_EAT_RADIUS = 10
 
 function GameLoop() {
-  const chicks = useGameStore((s) => s.chicks)
   const tick = useGameStore((s) => s.tick)
   const updateChick = useGameStore((s) => s.updateChick)
   const currentGame = useGameStore((s) => s.currentGame)
@@ -89,8 +88,8 @@ function GameLoop() {
     // Update hunger / mood / growth
     tick(delta)
 
-    // Read cursor state for attraction logic
-    const { cursorX, cursorY, cursorOnGrass, swipeActive, swipeTargetX, swipeTargetY } = useClickEffectsStore.getState()
+    // Read swipe state for chase behavior
+    const { swipeActive, swipeTargetX, swipeTargetY } = useClickEffectsStore.getState()
 
     // Get food particles for chick-food interaction
     const { foodParticles, removeFoodParticle, feedChickWithFood } =

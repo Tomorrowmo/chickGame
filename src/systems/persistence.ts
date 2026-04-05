@@ -104,29 +104,38 @@ export function loadGame(): PersistentState | null {
 
     // Migrate from v5: add inCoop and coopType to chicks
     if (data.version < 6) {
-      data.chicks = data.chicks.map((c: ChickData) => ({
-        ...c,
-        inCoop: (c as Record<string, unknown>).inCoop ?? (c.stage !== 'egg' && c.stage !== 'hatching'),
-        coopType: (c as Record<string, unknown>).coopType ?? (c.stage !== 'egg' && c.stage !== 'hatching' ? c.rarity : null),
-      }))
+      data.chicks = data.chicks.map((c: ChickData) => {
+        const raw = c as unknown as Record<string, unknown>
+        return {
+          ...c,
+          inCoop: (raw.inCoop as boolean | undefined) ?? (c.stage !== 'egg' && c.stage !== 'hatching'),
+          coopType: (raw.coopType as ChickData['coopType']) ?? (c.stage !== 'egg' && c.stage !== 'hatching' ? c.rarity : null),
+        }
+      })
       data.version = 6
     }
 
     // Migrate from v6: add personality to chicks
     if (data.version < 7) {
-      data.chicks = data.chicks.map((c: ChickData) => ({
-        ...c,
-        personality: (c as Record<string, unknown>).personality ?? generatePersonality(),
-      }))
+      data.chicks = data.chicks.map((c: ChickData) => {
+        const raw = c as unknown as Record<string, unknown>
+        return {
+          ...c,
+          personality: (raw.personality as ChickData['personality']) ?? generatePersonality(),
+        }
+      })
       data.version = 7
     }
 
     // Migrate from v7: add feedsThisStage (existing chicks default to 1 so they can progress)
     if (data.version < 8) {
-      data.chicks = data.chicks.map((c: ChickData) => ({
-        ...c,
-        feedsThisStage: (c as Record<string, unknown>).feedsThisStage as number ?? 1,
-      }))
+      data.chicks = data.chicks.map((c: ChickData) => {
+        const raw = c as unknown as Record<string, unknown>
+        return {
+          ...c,
+          feedsThisStage: (raw.feedsThisStage as number | undefined) ?? 1,
+        }
+      })
       data.version = 8
     }
 

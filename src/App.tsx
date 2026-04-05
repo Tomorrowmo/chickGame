@@ -6,7 +6,6 @@ import { Toolbar } from './components/ui/Toolbar'
 import { Shop } from './components/ui/Shop'
 import { AchievementPanel, AchievementToast } from './components/ui/Achievements'
 import { Tutorial } from './components/ui/Tutorial'
-import { useGameStore } from './store/gameStore'
 import './App.css'
 
 const GAME_WIDTH = 1440

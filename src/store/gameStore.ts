@@ -156,8 +156,29 @@ const effectiveCoins = savedState
   ? Math.max(savedState.coins, savedState.chicks.length === 0 ? INITIAL_COINS : 20)
   : INITIAL_COINS
 
+// First-time players get a starter adult hen so they can immediately see gameplay
+function makeStarterChick(): ChickData {
+  const starter = createEgg(720, 720)
+  return {
+    ...starter,
+    name: '小黄',
+    breed: 'yellow',
+    rarity: 'common',
+    stage: 'adult',
+    mood: 'happy',
+    moodValue: 85,
+    hunger: 70,
+    growthProgress: 0,
+    feedsThisStage: 1,
+    inCoop: true,
+    coopType: 'common',
+  }
+}
+
+const initialChicks = savedState?.chicks ?? [makeStarterChick()]
+
 export const useGameStore = create<GameState>((set, get) => ({
-  chicks: savedState?.chicks ?? [],
+  chicks: initialChicks,
   coins: effectiveCoins,
   gameTime: savedState?.gameTime ?? 480, // default 8:00 AM
   selectedChickId: savedState?.selectedChickId ?? null,
