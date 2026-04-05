@@ -9,6 +9,7 @@ import { Bushes } from './scene/Bush'
 import { Fence } from './scene/Fence'
 import { Flowers } from './scene/Flowers'
 import { Coop, findNearestCoop, getCoopByType } from './scene/Coop'
+import { Playground } from './scene/Playground'
 import { Chick } from './Chick'
 import { ClickEffects } from './ClickEffects'
 import { HatchEffect } from './HatchEffect'
@@ -25,6 +26,7 @@ import { GameOverlay } from '../games/GameOverlay'
 import { useGameStore, type PlacedDecoration } from '../store/gameStore'
 import { useClickEffectsStore } from '../systems/clickEffects'
 import { updateChickAI } from '../systems/chickAI'
+import { usePlaygroundStore, SWING_POS, SEESAW_POS, SLIDE_POS } from '../systems/playgroundStore'
 import { chirp, feed, hatch, pop, splash as splashSound } from '../systems/audio'
 import type { ChickData } from '../types/chick'
 import type { FederatedPointerEvent } from 'pixi.js'
@@ -100,10 +102,143 @@ function GameLoop() {
     // Get held chick id (skip AI for held chicks)
     const heldId = _heldChickId
 
+    // ── Playground rider management ──
+    const pg = usePlaygroundStore.getState()
+    const now = Date.now()
+    const RIDE_DURATION = 9000 // 9s
+
+    // Timeout existing riders
+    const timeoutRider = (id: string | null, mountTime: number) => {
+      return id && now - mountTime > RIDE_DURATION
+    }
+    if (timeoutRider(pg.swingRider, pg.swingMountTime)) {
+      const id = pg.swingRider!
+      pg.setSwingRider(null)
+      const c = latestChicks.find((ch) => ch.id === id)
+      if (c) {
+        updateChick(id, {
+          x: SWING_POS.x + 40,
+          y: SWING_POS.y + 30,
+          targetX: SWING_POS.x + 60,
+          targetY: SWING_POS.y + 40,
+          currentAction: 'idle',
+          moodValue: Math.min(100, c.moodValue + 10),
+        })
+      }
+    }
+    if (timeoutRider(pg.seesawRiderLeft, pg.seesawLeftMountTime)) {
+      const id = pg.seesawRiderLeft!
+      pg.setSeesawRider('left', null)
+      const c = latestChicks.find((ch) => ch.id === id)
+      if (c) {
+        updateChick(id, {
+          x: SEESAW_POS.x - 110,
+          y: SEESAW_POS.y + 20,
+          targetX: SEESAW_POS.x - 130,
+          targetY: SEESAW_POS.y + 30,
+          currentAction: 'idle',
+          moodValue: Math.min(100, c.moodValue + 10),
+        })
+      }
+    }
+    if (timeoutRider(pg.seesawRiderRight, pg.seesawRightMountTime)) {
+      const id = pg.seesawRiderRight!
+      pg.setSeesawRider('right', null)
+      const c = latestChicks.find((ch) => ch.id === id)
+      if (c) {
+        updateChick(id, {
+          x: SEESAW_POS.x + 110,
+          y: SEESAW_POS.y + 20,
+          targetX: SEESAW_POS.x + 130,
+          targetY: SEESAW_POS.y + 30,
+          currentAction: 'idle',
+          moodValue: Math.min(100, c.moodValue + 10),
+        })
+      }
+    }
+    // Slide: dismount when sliding phase complete or timed out
+    if (
+      pg.slideRider &&
+      (now - pg.slideMountTime > RIDE_DURATION ||
+        (pg.slidePhase === 'sliding' && pg.slideProgress >= 1))
+    ) {
+      const id = pg.slideRider
+      const c = latestChicks.find((ch) => ch.id === id)
+      pg.setSlideRider(null)
+      if (c) {
+        updateChick(id, {
+          x: SLIDE_POS.x + 80,
+          y: SLIDE_POS.y + 40,
+          targetX: SLIDE_POS.x + 120,
+          targetY: SLIDE_POS.y + 50,
+          currentAction: 'idle',
+          moodValue: Math.min(100, c.moodValue + 10),
+        })
+        pop()
+      }
+    }
+
+    // Collect current rider ids to skip AI
+    const pg2 = usePlaygroundStore.getState()
+    const riderIds = new Set<string>()
+    if (pg2.swingRider) riderIds.add(pg2.swingRider)
+    if (pg2.seesawRiderLeft) riderIds.add(pg2.seesawRiderLeft)
+    if (pg2.seesawRiderRight) riderIds.add(pg2.seesawRiderRight)
+    if (pg2.slideRider) riderIds.add(pg2.slideRider)
+
+    // Try to assign new riders from idle happy chicks
+    const tryAssignRider = (
+      slotEmpty: boolean,
+      pos: { x: number; y: number },
+      assign: (id: string) => void,
+    ) => {
+      if (!slotEmpty) return
+      for (const c of latestChicks) {
+        if (c.stage === 'egg' || c.stage === 'hatching') continue
+        if (riderIds.has(c.id)) continue
+        if (c.id === heldId) continue
+        if (c.currentAction === 'sleeping' || c.currentAction === 'chasing') continue
+        if (c.moodValue < 40) continue
+        const dx = c.x - pos.x
+        const dy = c.y - pos.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist > 400) continue
+        const p = c.personality.type
+        let chance = 0.0008
+        if (p === 'playful') chance *= 3
+        else if (p === 'lazy') chance *= 0.2
+        if (c.mood === 'happy') chance *= 1.5
+        if (Math.random() < chance * delta) {
+          assign(c.id)
+          riderIds.add(c.id)
+          chirp()
+          return
+        }
+      }
+    }
+
+    tryAssignRider(!pg2.swingRider, SWING_POS, (id) => pg2.setSwingRider(id))
+    tryAssignRider(!pg2.seesawRiderLeft, { x: SEESAW_POS.x - 100, y: SEESAW_POS.y }, (id) =>
+      pg2.setSeesawRider('left', id),
+    )
+    tryAssignRider(!pg2.seesawRiderRight, { x: SEESAW_POS.x + 100, y: SEESAW_POS.y }, (id) =>
+      pg2.setSeesawRider('right', id),
+    )
+    tryAssignRider(!pg2.slideRider, SLIDE_POS, (id) => pg2.setSlideRider(id))
+
+    // Mark any newly-assigned chicks as playing
+    for (const id of riderIds) {
+      const c = latestChicks.find((ch) => ch.id === id)
+      if (c && c.currentAction !== 'playing') {
+        updateChick(id, { currentAction: 'playing' })
+      }
+    }
+
     // Run AI for each chick
     for (const chick of latestChicks) {
       if (chick.stage === 'egg' || chick.stage === 'hatching') continue
       if (chick.id === heldId) continue // skip AI for held chick
+      if (riderIds.has(chick.id)) continue // skip AI for playground riders
 
       // Check for nearby food particles first
       let chasingFood = false
@@ -252,6 +387,10 @@ interface ActiveHatchEffect {
 
 export function GameCanvas({ width, height }: GameCanvasProps) {
   const chicks = useGameStore((s) => s.chicks)
+  const swingRider = usePlaygroundStore((s) => s.swingRider)
+  const seesawRiderLeft = usePlaygroundStore((s) => s.seesawRiderLeft)
+  const seesawRiderRight = usePlaygroundStore((s) => s.seesawRiderRight)
+  const slideRider = usePlaygroundStore((s) => s.slideRider)
   const selectChick = useGameStore((s) => s.selectChick)
   const petChick = useGameStore((s) => s.petChick)
   const updateChick = useGameStore((s) => s.updateChick)
@@ -588,13 +727,22 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
           <Bushes />
           <Coop />
           <CoopStatus />
+          <Playground />
           <Decorations />
           <ClickEffects />
           <FoodParticles />
           <SwipeTrail />
           <DirtSpots />
-          {chicks.map((chick) => (
-            <Chick
+          {chicks.map((chick) => {
+            if (
+              chick.id === swingRider ||
+              chick.id === seesawRiderLeft ||
+              chick.id === seesawRiderRight ||
+              chick.id === slideRider
+            ) {
+              return null
+            }
+            return (<Chick
               key={chick.id}
               data={chick}
               onClick={handleChickClick}
@@ -604,8 +752,8 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
               onRelease={handleChickRelease}
               holdCursorX={heldChickId === chick.id ? cursorPos.x : undefined}
               holdCursorY={heldChickId === chick.id ? cursorPos.y : undefined}
-            />
-          ))}
+            />)
+          })}
           {laidEggs.map((egg) => (
             <LaidEgg key={egg.id} egg={egg} onClick={handleLaidEggClick} />
           ))}
