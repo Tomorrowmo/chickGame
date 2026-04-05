@@ -253,11 +253,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       hunger = Math.max(0, hunger - 0.01 * delta)
       // Mood decreases slowly
       moodValue = Math.max(0, moodValue - 0.005 * delta)
-      // Growth speed: slower overall; each stage takes longer now
-      // egg/hatching ~45s, baby ~90s, juvenile ~90s, adult = no growth
+      // Growth speed: slow enough that each stage takes at least 2 minutes
+      // 2 min at 60fps = 7200 ticks; 100/7200 ≈ 0.014 per tick for ~120s
+      // baby/juvenile slower still (~3 minutes each)
       const growthSpeed =
-        stage === 'egg' || stage === 'hatching' ? 0.037
-        : stage === 'baby' || stage === 'juvenile' ? 0.018
+        stage === 'egg' || stage === 'hatching' ? 0.014
+        : stage === 'baby' || stage === 'juvenile' ? 0.009
         : 0
       // Growth only advances up to 95 until the chick has been fed this stage
       let feedsThisStage = chick.feedsThisStage
@@ -390,6 +391,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       coins: state.coins - cost,
       foodParticles: [...state.foodParticles, ...particles],
+      // Auto-exit feeding mode after one scatter
+      feedingMode: false,
+      selectedFood: null,
     })
     get().incrementStat('totalFeedCount')
     return true
