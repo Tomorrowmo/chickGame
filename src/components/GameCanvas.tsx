@@ -458,12 +458,19 @@ export function GameCanvas({ width, height }: GameCanvasProps) {
 
   const handleChickClick = useCallback(
     (data: ChickData) => {
-      // Eggs: tap to hear a sound + show hint
+      // Eggs: tap to speed up hatching (only when in a coop)
       if (data.stage === 'egg' || data.stage === 'hatching') {
         selectChick(data.id)
         pop()
         if (!data.inCoop) {
           showCoopMessage('长按拖到鸡窝才能孵化哦！', data.x, data.y - 40)
+          return
+        }
+        // Click boost: +2 growth per tap
+        const newGrowth = Math.min(100, data.growthProgress + 2)
+        if (newGrowth > data.growthProgress) {
+          updateChick(data.id, { growthProgress: newGrowth })
+          addEffect('heart', data.x, data.y - 20)
         }
         return
       }

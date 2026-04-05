@@ -281,9 +281,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         stage === 'egg' || stage === 'hatching' ? 0.014
         : stage === 'baby' || stage === 'juvenile' ? 0.009
         : 0
-      // Growth only advances up to 95 until the chick has been fed this stage
+      // Eggs hatch freely (they don't eat). Post-hatch stages require feeding.
       let feedsThisStage = chick.feedsThisStage
-      const fedThisStage = feedsThisStage >= 1
+      const isEggStage = stage === 'egg' || stage === 'hatching'
+      const fedThisStage = isEggStage || feedsThisStage >= 1
       const growthCap = fedThisStage ? 100 : 95
       growthProgress = Math.min(growthCap, growthProgress + growthSpeed * delta)
 
@@ -293,7 +294,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       else if (moodValue > 20) mood = 'bored'
       else mood = 'angry'
 
-      // Stage progression (only when fed at least once this stage)
+      // Stage progression (eggs hatch freely; later stages need feeding)
       if (growthProgress >= 100 && fedThisStage) {
         const stages = ['egg', 'hatching', 'baby', 'juvenile', 'adult'] as const
         const idx = stages.indexOf(stage)

@@ -548,7 +548,7 @@ export function Chick({ data, onClick, onHatch, isHeld, onPickup, onRelease, hol
       >
         <pixiGraphics draw={drawShadow} />
         <pixiGraphics draw={drawBody} />
-        {/* Ready-to-grow hint: chick needs feeding to advance stage */}
+        {/* Ready-to-grow hint: only non-egg stages need feeding */}
         {!isEgg && data.stage !== 'adult' && data.growthProgress >= 95 && data.feedsThisStage === 0 && (
           <pixiText
             text="想吃东西~"
