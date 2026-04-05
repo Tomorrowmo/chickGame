@@ -154,9 +154,11 @@ function drawMiniChick(g: Graphics, color: number, facing: 1 | -1) {
 // ─── Position helpers ───────────────────────────────────────────────────────
 
 export function getSwingSeatPosition(swingAngle: number): { x: number; y: number } {
+  // The top beam in local drawSwing coords is at cy = -80
+  // Seat = pivot.y + (-80) + cos(angle) * ropeLength
   return {
     x: SWING_PIVOT.x + Math.sin(swingAngle) * SWING_ROPE_LENGTH,
-    y: SWING_PIVOT.y + Math.cos(swingAngle) * SWING_ROPE_LENGTH,
+    y: SWING_PIVOT.y - 80 + Math.cos(swingAngle) * SWING_ROPE_LENGTH,
   }
 }
 
